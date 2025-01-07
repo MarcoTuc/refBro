@@ -72,7 +72,7 @@ def get_npmimatrix(results: pd.DataFrame, return_idx=True) -> np.ndarray:
 
 def rank_results(results, top_k=20): 
     npmimatrix, idx_t = get_npmimatrix(results, return_idx=True)
-    results["score"] = 0
+    results["score"] = 0.0
     for i, work in results.iterrows():
         topics = work["topics"]
         for ti, tj in combinations(topics, r=2):
