@@ -1,8 +1,14 @@
 from flask import Flask, jsonify, request, render_template
 from main import multi_search, rank_results
 import asyncio
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:5173", "http://localhost:3000", "https://refbro-ui.vercel.app"]  # Add any other frontend origins you need
+    }
+})
 
 @app.route("/")
 def home():
