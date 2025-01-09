@@ -8,6 +8,7 @@ from itertools import combinations
 
 BASE_OPENALEX = "https://api.openalex.org"
 
+# TODO: move to openalex.py
 async def fetch_papers_async(query: str, n_results=1000):
     query = "%20".join(query.split(" "))
     async with aiohttp.ClientSession() as session:
@@ -24,6 +25,7 @@ async def fetch_papers_async(query: str, n_results=1000):
             results.extend(data['results']) # TODO: check behavior of extend
     return pd.DataFrame(results)
 
+# TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
     """ Returns a dataframe with all retrieved papers for all queries """
     results = {}
