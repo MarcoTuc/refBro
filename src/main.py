@@ -21,7 +21,7 @@ async def fetch_papers_async(query: str, n_results=1000):
         results = []
         for response in responses:
             data = await response.json()
-            results.extend(data['results'])
+            results.extend(data['results']) # TODO: check behavior of extend
     return pd.DataFrame(results)
 
 async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
