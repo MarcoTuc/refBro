@@ -7,7 +7,7 @@ from openai import OpenAI
 from prompting.systemprompts import *
 
 
-client_oai = OpenAI(api_key=os.getenv("OPENAI_REFBRO_KEY"))
+client_oai = OpenAI(api_key=os.environ.get("OPENAI_REFBRO_KEY"))
 
 
 class SearchList(BaseModel):
