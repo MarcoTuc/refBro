@@ -26,18 +26,33 @@ def home():
     return render_template("index.html")
 
 def format_authors(authorships):
+    if not authorships:  # Handle None or empty list
+        return "Unknown Authors"
+    
     authors = []
-    for auth in authorships:
-        if 'author' in auth and 'display_name' in auth['author']:
-            authors.append(auth['author']['display_name'])
+    for auth in authorships or []:  # Use empty list if None
+        if isinstance(auth, dict) and 'author' in auth:  # Check if dict and has author
+            author_data = auth['author']
+            if isinstance(author_data, dict) and 'display_name' in author_data:
+                authors.append(author_data['display_name'])
+    
+    if not authors:  # If no valid authors found
+        return "Unknown Authors"
     if len(authors) > 3:
         return f"{authors[0]}, {authors[1]} et al."
     return ", ".join(authors)
 
 def format_journal(primary_location):
-    if not primary_location or 'source' not in primary_location:
+    if not primary_location:  # Handle None
         return "Unknown Journal"
-    source = primary_location['source']
+    
+    if not isinstance(primary_location, dict):  # Check if dict
+        return "Unknown Journal"
+        
+    source = primary_location.get('source', {})
+    if not isinstance(source, dict):  # Check if source is dict
+        return "Unknown Journal"
+        
     return source.get('display_name', 'Unknown Journal')
 
 @app.route("/queries", methods=["POST"])
