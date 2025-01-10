@@ -17,7 +17,10 @@ def get_logger():
         return current_app.logger
     except (ImportError, RuntimeError):
         import logging
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(
+            level=logging.INFO,
+            format='[%(asctime)s] %(levelname)s: %(message)s'
+        )
         return logging.getLogger(__name__)
 
 # TODO: move to openalex.py
@@ -32,16 +35,28 @@ async def fetch_papers_async(query: str, n_results=50):
             for page in range(1, pages + 1):
                 url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}&mailto={OPENALEX_EMAIL}"
                 tasks.append(session.get(url))
+            
+            logger.info(f"Making {len(tasks)} requests to OpenAlex")
             responses = await asyncio.gather(*tasks)
             results = []
+            
             for response in responses:
-                data = await response.json()
-                results.extend(data['results'])
-        return pd.DataFrame(results)
+                if response.status == 429:
+                    logger.error("Rate limit hit with OpenAlex API")
+                    raise Exception("OpenAlex rate limit reached")
+                    
+                try:
+                    data = await response.json()
+                    results.extend(data['results'])
+                except Exception as e:
+                    logger.error(f"Failed to parse OpenAlex response: {str(e)}")
+                    raise
+                    
+            logger.info(f"Retrieved {len(results)} papers from OpenAlex")
+            return pd.DataFrame(results)
     except Exception as e:
-        # current_app.logger.info(f"Problem with fetching papers: {str(e)}")
-        logger.info(f"Problem with fetching papers: {str(e)}")
-        return pd.DataFrame()
+        logger.error(f"Problem with fetching papers: {str(e)}")
+        raise  # Re-raise to be handled by the endpoint
 
 # TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=50) -> pd.DataFrame:
