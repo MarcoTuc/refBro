@@ -55,7 +55,7 @@ async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_dela
     
     return None
 
-async def fetch_papers_async(query: str, n_results=2000, per_page=200):
+async def fetch_papers_async(query: str, n_results=200, per_page=200):
     logger = get_logger()
     query = "%20".join(query.split(" "))
     try:
