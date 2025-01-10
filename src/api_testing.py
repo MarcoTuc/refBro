@@ -1,6 +1,4 @@
 import asyncio
-from flask import Flask, jsonify, request, render_template
-from flask_cors import CORS
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
 from _openalex import get_papers_from_dois

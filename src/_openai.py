@@ -3,7 +3,7 @@ import pandas as pd
 
 from pydantic import BaseModel
 from openai import OpenAI
-
+from flask import current_app
 from prompting.systemprompts import *
 
 
@@ -40,4 +40,5 @@ def keywords_from_abstracts(papers: pd.DataFrame):
             response_format=SearchList,
         )
         return completion.choices[0].message.parsed.queries
-    except Exception: print("Problem in openai pipeline")
+    except Exception as e: 
+        current_app.logger.error(f"Problem in openai pipeline {str(e)}")

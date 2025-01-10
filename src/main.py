@@ -1,10 +1,11 @@
+import os
 from typing import List, Tuple
 import aiohttp
 import asyncio
 import pandas as pd 
 import numpy as np 
 from itertools import combinations
-
+from flask import current_app
 
 BASE_OPENALEX = "https://api.openalex.org"
 
@@ -23,9 +24,11 @@ async def fetch_papers_async(query: str, n_results=1000):
             results = []
             for response in responses:
                 data = await response.json()
-                results.extend(data['results']) # TODO: check behavior of extend
+                results.extend(data['results'])
         return pd.DataFrame(results)
-    except Exception: print("problem with fetching papers")
+    except Exception as e:
+        current_app.logger.error(f"Problem with fetching papers: {str(e)}")
+        return pd.DataFrame()
 
 # TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
@@ -35,8 +38,9 @@ async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
         for query in queries: 
             results[query] = await fetch_papers_async(query, n_results=n_results)
         return pd.concat(list(results.values()), ignore_index=True)
-    except Exception: print("problem with multi_search")
-
+    except Exception as e: 
+        current_app.logger.error(f"Problem with multi_search: {str(e)}")
+}
 def get_topics_set(results: pd.DataFrame):
     topics = results["topics"]
     topic_ids = []
