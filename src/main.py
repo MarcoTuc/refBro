@@ -27,7 +27,7 @@ async def fetch_papers_async(query: str, n_results=1000):
                 results.extend(data['results'])
         return pd.DataFrame(results)
     except Exception as e:
-        current_app.logger.error(f"Problem with fetching papers: {str(e)}")
+        current_app.logger.info(f"Problem with fetching papers: {str(e)}")
         return pd.DataFrame()
 
 # TODO: move to openalex.py
@@ -39,7 +39,7 @@ async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
             results[query] = await fetch_papers_async(query, n_results=n_results)
         return pd.concat(list(results.values()), ignore_index=True)
     except Exception as e: 
-        current_app.logger.error(f"Problem with multi_search: {str(e)}")
+        current_app.logger.info(f"Problem with multi_search: {str(e)}")
 
 def get_topics_set(results: pd.DataFrame):
     topics = results["topics"]

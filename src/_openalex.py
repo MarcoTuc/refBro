@@ -11,7 +11,7 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
             results.append(get_paper_from_doi(doi))
         return pd.DataFrame(results)
     except Exception as e: 
-        current_app.logger.error(f"problem with fetching DOIs: {str(e)}")
+        current_app.logger.info(f"problem with fetching DOIs: {str(e)}")
 
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"

@@ -30,17 +30,17 @@ async def get_recommendations():
         return jsonify({"error": "No queries provided"}), 400
     try: 
         # convert dois into dataframe of papers
-        print("retrieving papers from dois")
+        app.logger.info("retrieving papers from dois")
         papers = get_papers_from_dois(dois)
-        print("extracting keywords with oai")
+        app.logger.info("extracting keywords with oai")
         kwords = keywords_from_abstracts(papers)
-        print("keywords search on openalex")
+        app.logger.info("keywords search on openalex")
         search = await multi_search(kwords)
-        print("ranking the results")
+        app.logger.info("ranking the results")
         recomm = rank_results(search, top_k=20)
-        print("extracting abstract")
+        app.logger.info("extracting abstract")
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
-        print("retrieving papers from dois")
+        app.logger.info("retrieving papers from dois")
         recommendations = recomm[[
             "title", 
             "abstract",
@@ -50,8 +50,8 @@ async def get_recommendations():
             "primary_location",
             "score",
         ]].to_dict("records")
-        print(f"{len(recommendations)} Recommendations retrieved correctly:")
-        print("Sending recommendations to the frontend")
+        app.logger.info(f"{len(recommendations)} Recommendations retrieved correctly:")
+        app.logger.info("Sending recommendations to the frontend")
         return jsonify({"recommendations": recommendations})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
