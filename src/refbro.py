@@ -15,7 +15,9 @@ CORS(app, resources={
             "http://localhost:5173", 
             "http://localhost:3000", 
             "https://refbro-ui.vercel.app",
-            "https://refbro.onrender.com/"]  # Add any other frontend origins you need
+            "https://refbro.onrender.com/", 
+            "https://oshimascience.com/",
+            ]  # Add any other frontend origins you need
     }
 })
 
