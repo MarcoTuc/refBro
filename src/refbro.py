@@ -33,7 +33,7 @@ async def get_recommendations():
         search = await multi_search(kwords)
         recomm = rank_results(search, top_k=20)
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
-        top_re = recomm[[
+        recommendations = recomm[[
             "title", 
             "abstract",
             "doi", 
@@ -42,7 +42,10 @@ async def get_recommendations():
             "primary_location",
             "score",
         ]].to_dict("records")
-        return jsonify({"recommendations": top_re})
+        print("Recommendations retrieved correctly:")
+        print(recommendations)
+        print("Sending recommendations to the frontend")
+        return jsonify({"recommendations": recommendations})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
