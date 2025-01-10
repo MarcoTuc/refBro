@@ -8,6 +8,8 @@ from itertools import combinations
 from flask import current_app
 
 BASE_OPENALEX = "https://api.openalex.org"
+OPENALEX_EMAIL = "ostmanncarla@gmail.com"
+
 
 def get_logger():
     try:
@@ -28,7 +30,7 @@ async def fetch_papers_async(query: str, n_results=50):
             per_page = 50
             pages = (n_results // per_page) + 1
             for page in range(1, pages + 1):
-                url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}"
+                url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}&mailto={OPENALEX_EMAIL}"
                 tasks.append(session.get(url))
             responses = await asyncio.gather(*tasks)
             results = []

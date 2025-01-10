@@ -3,6 +3,8 @@ from flask import current_app
 import pandas as pd
 
 BASE_OPENALEX = "https://api.openalex.org"
+OPENALEX_EMAIL = "ostmanncarla@gmail.com"
+
 
 def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
     results = []
@@ -28,7 +30,7 @@ def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"
     if doi[:15] != base_doi: 
         doi = f"{base_doi}/{doi.split('doi.org/')[-1]}"
-    url = f"{BASE_OPENALEX}/works/{doi}"
+    url = f"{BASE_OPENALEX}/works/{doi}?mailto={OPENALEX_EMAIL}"
     
     try:
         response = requests.get(url)
