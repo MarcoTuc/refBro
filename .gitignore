@@ -2,3 +2,4 @@ env
 vector_data
 config.yml
 .exp
+.env

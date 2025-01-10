@@ -9,13 +9,23 @@ from flask import current_app
 
 BASE_OPENALEX = "https://api.openalex.org"
 
+def get_logger():
+    try:
+        from flask import current_app
+        return current_app.logger
+    except (ImportError, RuntimeError):
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        return logging.getLogger(__name__)
+
 # TODO: move to openalex.py
-async def fetch_papers_async(query: str, n_results=1000):
+async def fetch_papers_async(query: str, n_results=50):
+    logger = get_logger()
     query = "%20".join(query.split(" "))
     try:
         async with aiohttp.ClientSession() as session:
             tasks = []
-            per_page = 200
+            per_page = 50
             pages = (n_results // per_page) + 1
             for page in range(1, pages + 1):
                 url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}"
@@ -27,19 +37,23 @@ async def fetch_papers_async(query: str, n_results=1000):
                 results.extend(data['results'])
         return pd.DataFrame(results)
     except Exception as e:
-        current_app.logger.info(f"Problem with fetching papers: {str(e)}")
+        # current_app.logger.info(f"Problem with fetching papers: {str(e)}")
+        logger.info(f"Problem with fetching papers: {str(e)}")
         return pd.DataFrame()
 
 # TODO: move to openalex.py
-async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
-    """ Returns a dataframe with all retrieved papers for all queries """
-    results = {}
+async def multi_search(queries: List[str], n_results=50) -> pd.DataFrame:
+    logger = get_logger()
     try:
-        for query in queries: 
-            results[query] = await fetch_papers_async(query, n_results=n_results)
-        return pd.concat(list(results.values()), ignore_index=True)
+        # Create tasks for all queries at once
+        tasks = [fetch_papers_async(query, n_results=n_results) for query in queries]
+        # Execute all queries in parallel
+        results = await asyncio.gather(*tasks)
+        return pd.concat(results, ignore_index=True)
     except Exception as e: 
-        current_app.logger.info(f"Problem with multi_search: {str(e)}")
+        # current_app.logger.info(f"Problem with multi_search: {str(e)}")
+        logger.info(f"Problem with multi_search: {str(e)}")
+        return pd.DataFrame()
 
 def get_topics_set(results: pd.DataFrame):
     topics = results["topics"]

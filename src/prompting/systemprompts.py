@@ -29,7 +29,7 @@ You are given by the user the task of summarizing from a list of titles and abst
 
 # system prompt for going from an extended abstract to a list of queries
 system_prompt_2_b = f"""{role_keyword_searcher}
-You are given by the user an extended abstract from which you have to extract a list of 10 keyword searches that will unveil interesting results that can greatly impact the research directions highlighted int he extended abstract.
+You are given by the user an extended abstract from which you have to extract a list of keyword searches that will unveil interesting results that can greatly impact the research directions highlighted int he extended abstract.
 {explain_list_format_kw}"""
 
 
