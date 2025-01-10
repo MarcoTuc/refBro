@@ -8,7 +8,11 @@ from _openalex import get_papers_from_dois, reconstruct_abstract
 app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:5173", "http://localhost:3000", "https://refbro-ui.vercel.app"]  # Add any other frontend origins you need
+        "origins": [
+            "http://localhost:5173", 
+            "http://localhost:3000", 
+            "https://refbro-ui.vercel.app",
+            "https://refbro.onrender.com/"]  # Add any other frontend origins you need
     }
 })
 
