@@ -8,18 +8,49 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
     results = []
     try:
         for doi in dois_list:
-            results.append(get_paper_from_doi(doi))
+            try:
+                paper = get_paper_from_doi(doi)
+                if paper:
+                    results.append(paper)
+            except Exception as e:
+                current_app.logger.error(f"Failed to fetch DOI {doi}: {str(e)}")
+                continue
+        
+        if not results:
+            raise Exception("Failed to fetch any valid papers from provided DOIs")
+            
         return pd.DataFrame(results)
     except Exception as e: 
-        current_app.logger.info(f"problem with fetching DOIs: {str(e)}")
+        current_app.logger.error(f"Problem with fetching DOIs: {str(e)}")
+        raise
 
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"
-    if doi[:15] != base_doi: doi = f"{base_doi}/{doi}"
+    if doi[:15] != base_doi: 
+        doi = f"{base_doi}/{doi.split('doi.org/')[-1]}"  # Handle both full URLs and bare DOIs
     url = f"{BASE_OPENALEX}/works/{doi}"
-    response = requests.get(url).json()
-    response["abstract"] = reconstruct_abstract(response["abstract_inverted_index"])
-    return response
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for bad status codes
+        data = response.json()
+        
+        if "abstract_inverted_index" not in data:
+            current_app.logger.warning(f"No abstract found for DOI: {doi}")
+            data["abstract"] = "MISSING_ABSTRACT"
+        else:
+            data["abstract"] = reconstruct_abstract(data["abstract_inverted_index"])
+        return data
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Request failed for DOI {doi}: {str(e)}")
+        raise
+    except ValueError as e:
+        current_app.logger.error(f"Invalid JSON response for DOI {doi}: {str(e)}")
+        current_app.logger.debug(f"Response content: {response.text}")
+        raise
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error processing DOI {doi}: {str(e)}")
+        raise
 
 def reconstruct_abstract(index: dict) -> str:
     if isinstance(index, type(None)): return "MISSING_ABSTRACT" # TODO: expand with scraping methods TODO: decide if to return None instead
