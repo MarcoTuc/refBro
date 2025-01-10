@@ -8,6 +8,7 @@ from itertools import combinations
 
 BASE_OPENALEX = "https://api.openalex.org"
 
+# TODO: move to openalex.py
 async def fetch_papers_async(query: str, n_results=1000):
     query = "%20".join(query.split(" "))
     async with aiohttp.ClientSession() as session:
@@ -21,9 +22,10 @@ async def fetch_papers_async(query: str, n_results=1000):
         results = []
         for response in responses:
             data = await response.json()
-            results.extend(data['results'])
+            results.extend(data['results']) # TODO: check behavior of extend
     return pd.DataFrame(results)
 
+# TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
     """ Returns a dataframe with all retrieved papers for all queries """
     results = {}
@@ -70,7 +72,7 @@ def get_npmimatrix(results: pd.DataFrame, return_idx=True) -> np.ndarray:
     else: 
         return npmimatrix
 
-def rank_results(results, top_k=20): 
+def rank_results(results: pd.DataFrame, top_k=20) -> pd.DataFrame: 
     npmimatrix, idx_t = get_npmimatrix(results, return_idx=True)
     results["score"] = 0.0
     for i, work in results.iterrows():
