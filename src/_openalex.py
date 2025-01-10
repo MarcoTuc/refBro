@@ -17,7 +17,7 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
                 continue
         
         if not results:
-            raise Exception("Failed to fetch any valid papers from provided DOIs")
+            raise Exception("None of the provided DOIs were found in OpenAlex")
             
         return pd.DataFrame(results)
     except Exception as e: 
@@ -27,12 +27,16 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"
     if doi[:15] != base_doi: 
-        doi = f"{base_doi}/{doi.split('doi.org/')[-1]}"  # Handle both full URLs and bare DOIs
+        doi = f"{base_doi}/{doi.split('doi.org/')[-1]}"
     url = f"{BASE_OPENALEX}/works/{doi}"
     
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raise an error for bad status codes
+        if response.status_code == 404:
+            current_app.logger.warning(f"DOI not found in OpenAlex: {doi}")
+            return None
+        
+        response.raise_for_status()
         data = response.json()
         
         if "abstract_inverted_index" not in data:
