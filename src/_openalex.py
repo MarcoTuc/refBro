@@ -6,9 +6,11 @@ BASE_OPENALEX = "https://api.openalex.org"
 
 def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
     results = []
-    for doi in dois_list:
-        results.append(get_paper_from_doi(doi))
-    return pd.DataFrame(results)
+    try:
+        for doi in dois_list:
+            results.append(get_paper_from_doi(doi))
+        return pd.DataFrame(results)
+    except Exception: print("problem with fetching DOIs")
 
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"

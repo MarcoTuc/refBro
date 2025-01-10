@@ -24,18 +24,20 @@ def format_abstracts_for_oai_userprompt(papers: pd.DataFrame) -> str:
 
 def keywords_from_abstracts(papers: pd.DataFrame):
     user_prompt = format_abstracts_for_oai_userprompt(papers)
-    completion = client_oai.beta.chat.completions.parse(
-        model="gpt-4o",
-        messages=[
-            {
-                "role": "system", 
-                "content": f"{system_prompt_1}"
-            },
-            {
-                "role": "user", 
-                "content": f"{user_prompt}"
-            },
-        ],
-        response_format=SearchList,
-    )
-    return completion.choices[0].message.parsed.queries
+    try:
+        completion = client_oai.beta.chat.completions.parse(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"{system_prompt_1}"
+                },
+                {
+                    "role": "user", 
+                    "content": f"{user_prompt}"
+                },
+            ],
+            response_format=SearchList,
+        )
+        return completion.choices[0].message.parsed.queries
+    except Exception: print("Problem in openai pipeline")
