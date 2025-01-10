@@ -73,7 +73,7 @@ async def get_recommendations():
             return jsonify({"error": "Failed to generate keywords from papers"}), 500
 
         app.logger.info("keywords search on openalex")
-        search = await multi_search(kwords)
+        search = await multi_search(kwords, n_results=2000, per_page=200)
         if search.empty:
             return jsonify({"error": "No search results found"}), 404
 

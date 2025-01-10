@@ -24,7 +24,7 @@ def get_logger():
         )
         return logging.getLogger(__name__)
 
-async def fetch_with_retry(session, url: str, max_retries: int = 3, initial_delay: float = 1.0) -> Optional[dict]:
+async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_delay: float = 1.0) -> Optional[dict]:
     logger = get_logger()
     delay = initial_delay
     
@@ -55,13 +55,12 @@ async def fetch_with_retry(session, url: str, max_retries: int = 3, initial_dela
     
     return None
 
-async def fetch_papers_async(query: str, n_results=50):
+async def fetch_papers_async(query: str, n_results=2000, per_page=200):
     logger = get_logger()
     query = "%20".join(query.split(" "))
     try:
         async with aiohttp.ClientSession() as session:
-            tasks = []
-            per_page = 50
+            tasks = [] 
             pages = (n_results + per_page - 1) // per_page
             
             for page in range(1, pages + 1):
@@ -87,11 +86,11 @@ async def fetch_papers_async(query: str, n_results=50):
         raise
 
 # TODO: move to openalex.py
-async def multi_search(queries: List[str], n_results=50) -> pd.DataFrame:
+async def multi_search(queries: List[str], n_results=2000, per_page=200) -> pd.DataFrame:
     logger = get_logger()
     try:
         # Create tasks for all queries at once
-        tasks = [fetch_papers_async(query, n_results=n_results) for query in queries]
+        tasks = [fetch_papers_async(query, n_results=n_results, per_page=per_page) for query in queries]
         # Execute all queries in parallel
         results = await asyncio.gather(*tasks)
         return pd.concat(results, ignore_index=True)

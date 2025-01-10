@@ -4,6 +4,8 @@ from _openai import keywords_from_abstracts
 from _openalex import get_papers_from_dois
 
 
+"https://doi.org/10.48550/arXiv.2501.05252"
+
 async def queries_test():
     dois = [
         "https://doi.org/10.48550/arXiv.2411.19865",
