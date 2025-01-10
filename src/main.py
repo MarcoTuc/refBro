@@ -86,7 +86,7 @@ async def fetch_papers_async(query: str, n_results=2000, per_page=200):
         raise
 
 # TODO: move to openalex.py
-async def multi_search(queries: List[str], n_results=400, per_page=200) -> pd.DataFrame:
+async def multi_search(queries: List[str], n_results=200, per_page=200) -> pd.DataFrame:
     logger = get_logger()
     try:
         # Create tasks for all queries at once
