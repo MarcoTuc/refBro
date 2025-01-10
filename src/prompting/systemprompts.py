@@ -1,4 +1,4 @@
-keywords_out = 10
+keywords_out = 6
 
 # role of an expert keyword searcher
 role_keyword_searcher = f"""You are a scientist, expert and master in constructing text queries for scholarly search engines. 
@@ -9,7 +9,7 @@ role_summarizer = f"""You are an experienced scientist in the craft of writing r
 
 # formatting explanation for keywords list
 explain_list_format_kw = f"""You are going to format your list of keyword searches as a list of strings such as in the following example:
-["search_1", "search_2", "search_3", "search_4", "search_5", "search_6", "search_7", "search_8", "search_9", "search_10"]"""
+["search_1", "search_2", "search_3", "search_4", "search_5", "search_6"]"""
 
 # system prompt for going from a list of abstracts to a list of queries
 system_prompt_1 = f"""{role_keyword_searcher}

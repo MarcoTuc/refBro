@@ -40,7 +40,7 @@ async def multi_search(queries: List[str], n_results=400) -> pd.DataFrame:
         return pd.concat(list(results.values()), ignore_index=True)
     except Exception as e: 
         current_app.logger.error(f"Problem with multi_search: {str(e)}")
-}
+
 def get_topics_set(results: pd.DataFrame):
     topics = results["topics"]
     topic_ids = []
