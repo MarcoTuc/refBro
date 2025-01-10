@@ -23,6 +23,21 @@ CORS(app, resources={
 def home():
     return render_template("index.html")
 
+def format_authors(authorships):
+    authors = []
+    for auth in authorships:
+        if 'author' in auth and 'display_name' in auth['author']:
+            authors.append(auth['author']['display_name'])
+    if len(authors) > 3:
+        return f"{authors[0]}, {authors[1]} et al."
+    return ", ".join(authors)
+
+def format_journal(primary_location):
+    if not primary_location or 'source' not in primary_location:
+        return "Unknown Journal"
+    source = primary_location['source']
+    return source.get('display_name', 'Unknown Journal')
+
 @app.route("/queries", methods=["POST"])
 async def get_recommendations():
     dois = request.json.get("queries", []) # this will eventually be handled by the backend and we will recieve a list of DOIs from the frontend
@@ -52,7 +67,21 @@ async def get_recommendations():
         ]].to_dict("records")
         app.logger.info(f"{len(recommendations)} Recommendations retrieved correctly:")
         app.logger.info("Sending recommendations to the frontend")
-        return jsonify({"recommendations": recommendations})
+
+        formatted_recommendations = []
+        for paper in recommendations:
+            formatted_paper = {
+                'title': paper['title'],
+                'abstract': paper['abstract'],
+                'doi': paper['doi'],
+                'authors': format_authors(paper['authorships']),
+                'journal': format_journal(paper['primary_location']),
+                'year': paper['publication_year'],
+                'score': paper['score']
+            }
+            formatted_recommendations.append(formatted_paper)
+
+        return jsonify({"recommendations": formatted_recommendations})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

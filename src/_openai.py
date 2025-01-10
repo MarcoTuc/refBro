@@ -39,6 +39,7 @@ def keywords_from_abstracts(papers: pd.DataFrame):
             ],
             response_format=SearchList,
         )
+        current_app.logger.info(f"OpenAI response: {completion.choices[0].message.parsed}")
         return completion.choices[0].message.parsed.queries
     except Exception as e: 
         current_app.logger.info(f"Problem in openai pipeline {str(e)}")
