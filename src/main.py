@@ -1,11 +1,12 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import aiohttp
 import asyncio
 import pandas as pd 
 import numpy as np 
 from itertools import combinations
 from flask import current_app
+import time
 
 BASE_OPENALEX = "https://api.openalex.org"
 OPENALEX_EMAIL = "ostmanncarla@gmail.com"
@@ -23,7 +24,37 @@ def get_logger():
         )
         return logging.getLogger(__name__)
 
-# TODO: move to openalex.py
+async def fetch_with_retry(session, url: str, max_retries: int = 3, initial_delay: float = 1.0) -> Optional[dict]:
+    logger = get_logger()
+    delay = initial_delay
+    
+    for attempt in range(max_retries):
+        try:
+            async with session.get(url) as response:
+                if response.status == 429:  # Rate limit hit
+                    if attempt < max_retries - 1:  # Don't sleep on last attempt
+                        wait_time = delay * (2 ** attempt)  # Exponential backoff
+                        logger.info(f"Rate limit hit, waiting {wait_time:.1f}s before retry {attempt + 1}/{max_retries}")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error("Rate limit hit and max retries exceeded")
+                        raise Exception("OpenAlex rate limit reached after max retries")
+                
+                response.raise_for_status()
+                return await response.json()
+                
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = delay * (2 ** attempt)
+                logger.warning(f"Request failed, retrying in {wait_time:.1f}s ({attempt + 1}/{max_retries}): {str(e)}")
+                await asyncio.sleep(wait_time)
+            else:
+                logger.error(f"All retries failed: {str(e)}")
+                raise
+    
+    return None
+
 async def fetch_papers_async(query: str, n_results=50):
     logger = get_logger()
     query = "%20".join(query.split(" "))
@@ -31,32 +62,29 @@ async def fetch_papers_async(query: str, n_results=50):
         async with aiohttp.ClientSession() as session:
             tasks = []
             per_page = 50
-            pages = (n_results // per_page) + 1
+            pages = (n_results + per_page - 1) // per_page
+            
             for page in range(1, pages + 1):
                 url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}&mailto={OPENALEX_EMAIL}"
-                tasks.append(session.get(url))
+                tasks.append(fetch_with_retry(session, url))
             
             logger.info(f"Making {len(tasks)} requests to OpenAlex")
-            responses = await asyncio.gather(*tasks)
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
             results = []
             
             for response in responses:
-                if response.status == 429:
-                    logger.error("Rate limit hit with OpenAlex API")
-                    raise Exception("OpenAlex rate limit reached")
-                    
-                try:
-                    data = await response.json()
-                    results.extend(data['results'])
-                except Exception as e:
-                    logger.error(f"Failed to parse OpenAlex response: {str(e)}")
-                    raise
+                if isinstance(response, Exception):
+                    logger.error(f"Request failed: {str(response)}")
+                    continue
+                if response:  # Skip None responses
+                    results.extend(response['results'])
                     
             logger.info(f"Retrieved {len(results)} papers from OpenAlex")
-            return pd.DataFrame(results)
+            return pd.DataFrame(results) if results else pd.DataFrame()
+            
     except Exception as e:
         logger.error(f"Problem with fetching papers: {str(e)}")
-        raise  # Re-raise to be handled by the endpoint
+        raise
 
 # TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=50) -> pd.DataFrame:
