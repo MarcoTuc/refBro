@@ -1,4 +1,4 @@
 env
 vector_data
-pinecone.yml
+config.yml
 .vercel

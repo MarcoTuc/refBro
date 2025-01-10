@@ -72,7 +72,7 @@ def get_npmimatrix(results: pd.DataFrame, return_idx=True) -> np.ndarray:
     else: 
         return npmimatrix
 
-def rank_results(results, top_k=20): 
+def rank_results(results: pd.DataFrame, top_k=20) -> pd.DataFrame: 
     npmimatrix, idx_t = get_npmimatrix(results, return_idx=True)
     results["score"] = 0.0
     for i, work in results.iterrows():

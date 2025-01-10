@@ -4,11 +4,11 @@ import pandas as pd
 
 BASE_OPENALEX = "https://api.openalex.org"
 
-def get_papers_from_dois(dois_list):
+def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
     results = []
     for doi in dois_list:
-        results.extend(get_paper_from_doi(doi))
-    return results
+        results.append(get_paper_from_doi(doi))
+    return pd.DataFrame(results)
 
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"
