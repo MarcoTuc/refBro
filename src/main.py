@@ -10,6 +10,7 @@ import time
 
 BASE_OPENALEX = "https://api.openalex.org"
 OPENALEX_EMAIL = "ostmanncarla@gmail.com"
+SEARCH_FIELDS = "title,abstract_inverted_index,doi,authorships,publication_year,primary_location,topics"
 
 async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_delay: float = 1.0) -> Optional[dict]:
     logger = current_app.logger
@@ -51,7 +52,7 @@ async def fetch_papers_async(query: str, n_results=200, per_page=200):
             pages = (n_results + per_page - 1) // per_page
             
             for page in range(1, pages + 1):
-                url = f"{BASE_OPENALEX}/works?search={query}&per-page={per_page}&page={page}&mailto={OPENALEX_EMAIL}"
+                url = f"{BASE_OPENALEX}/works?search={query}&select={SEARCH_FIELDS}&per-page={per_page}&page={page}&mailto={OPENALEX_EMAIL}"
                 tasks.append(fetch_with_retry(session, url))
             
             logger.info(f"Making {len(tasks)} requests to OpenAlex")
