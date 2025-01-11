@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request, render_template, current_app
 from flask_cors import CORS
+import tracemalloc
 
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
@@ -57,6 +58,9 @@ def format_journal(primary_location):
 
 @app.route("/queries", methods=["POST"])
 async def get_recommendations():
+    # Start memory tracking
+    tracemalloc.start()
+    
     dois = request.json.get("queries", [])
     include_unranked = request.json.get("include_unranked", False)
     
@@ -121,8 +125,28 @@ async def get_recommendations():
         if include_unranked:
             response_data["unranked_dois"] = unranked_dois
             
+        # Take a snapshot after the main operations
+        current, peak = tracemalloc.get_traced_memory()
+        
+        # Get detailed memory statistics
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        
+        # Log memory usage
+        current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
+        current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
+        
+        # Log top 3 memory blocks
+        current_app.logger.info("Top 3 memory blocks:")
+        for stat in top_stats[:3]:
+            current_app.logger.info(stat)
+            
+        # Stop tracking at the end
+        tracemalloc.stop()
+        
         return jsonify(response_data)
     except Exception as e:
+        tracemalloc.stop()  # Make sure to stop tracking even if there's an error
         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 

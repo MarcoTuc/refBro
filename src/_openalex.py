@@ -4,6 +4,7 @@ import pandas as pd
 
 BASE_OPENALEX = "https://api.openalex.org"
 OPENALEX_EMAIL = "ostmanncarla@gmail.com"
+DOI_FIELDS = "title,abstract_inverted_index,doi"  # Minimal fields for initial papers
 
 
 def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
@@ -33,7 +34,7 @@ def get_paper_from_doi(doi: str) -> list[dict]:
     # Clean the DOI to handle various input formats
     clean_doi = doi.replace("https://doi.org/", "").replace("http://doi.org/", "")
     doi_url = f"{base_doi}/{clean_doi}"
-    url = f"{BASE_OPENALEX}/works/{doi_url}?mailto={OPENALEX_EMAIL}"
+    url = f"{BASE_OPENALEX}/works/{doi_url}?select={DOI_FIELDS}&mailto={OPENALEX_EMAIL}"
     
     try:
         response = requests.get(url)
