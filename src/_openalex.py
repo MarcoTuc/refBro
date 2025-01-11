@@ -7,6 +7,7 @@ OPENALEX_EMAIL = "ostmanncarla@gmail.com"
 
 
 def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
+    current_app.logger.info(f"Fetching {len(dois_list)} papers from OpenAlex")
     results = []
     try:
         for doi in dois_list:
@@ -21,6 +22,7 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
         if not results:
             raise Exception("None of the provided DOIs were found in OpenAlex")
             
+        current_app.logger.info(f"Successfully fetched {len(results)} papers")
         return pd.DataFrame(results)
     except Exception as e: 
         current_app.logger.error(f"Problem with fetching DOIs: {str(e)}")
@@ -36,7 +38,7 @@ def get_paper_from_doi(doi: str) -> list[dict]:
     try:
         response = requests.get(url)
         if response.status_code == 404:
-            current_app.logger.warning(f"DOI not found in OpenAlex: {doi}")
+            current_app.logger.warning(f"DOI not found in OpenAlex: {doi_url}. Full URL: {url}")
             return None
         
         response.raise_for_status()

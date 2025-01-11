@@ -25,6 +25,7 @@ def format_abstracts_for_oai_userprompt(papers: pd.DataFrame) -> str:
 def keywords_from_abstracts(papers: pd.DataFrame):
     user_prompt = format_abstracts_for_oai_userprompt(papers)
     try:
+        current_app.logger.info("Sending request to OpenAI API")
         completion = client_oai.beta.chat.completions.parse(
             model="gpt-4o",
             messages=[
@@ -39,8 +40,8 @@ def keywords_from_abstracts(papers: pd.DataFrame):
             ],
             response_format=SearchList,
         )
-        current_app.logger.info(f"OpenAI response: {completion.choices[0].message.parsed}")
+        current_app.logger.info(f"Generated {len(completion.choices[0].message.parsed.queries)} search queries")
         return completion.choices[0].message.parsed.queries
     except Exception as e: 
-        current_app.logger.info(f"Problem in openai pipeline {str(e)}")
-        raise Exception(f"OpenAI API error: {str(e)}")  # Re-raise the error instead of silently returning None
+        current_app.logger.error(f"OpenAI API error: {str(e)}")
+        raise

@@ -11,21 +11,8 @@ import time
 BASE_OPENALEX = "https://api.openalex.org"
 OPENALEX_EMAIL = "ostmanncarla@gmail.com"
 
-
-def get_logger():
-    try:
-        from flask import current_app
-        return current_app.logger
-    except (ImportError, RuntimeError):
-        import logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format='[%(asctime)s] %(levelname)s: %(message)s'
-        )
-        return logging.getLogger(__name__)
-
 async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_delay: float = 1.0) -> Optional[dict]:
-    logger = get_logger()
+    logger = current_app.logger
     delay = initial_delay
     
     for attempt in range(max_retries):
@@ -56,7 +43,7 @@ async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_dela
     return None
 
 async def fetch_papers_async(query: str, n_results=200, per_page=200):
-    logger = get_logger()
+    logger = current_app.logger
     query = "%20".join(query.split(" "))
     try:
         async with aiohttp.ClientSession() as session:
@@ -87,7 +74,7 @@ async def fetch_papers_async(query: str, n_results=200, per_page=200):
 
 # TODO: move to openalex.py
 async def multi_search(queries: List[str], n_results=200, per_page=200) -> pd.DataFrame:
-    logger = get_logger()
+    logger = current_app.logger
     try:
         # Create tasks for all queries at once
         tasks = [fetch_papers_async(query, n_results=n_results, per_page=per_page) for query in queries]
