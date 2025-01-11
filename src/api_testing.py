@@ -1,47 +1,37 @@
 import asyncio
-from main import multi_search, rank_results
-from _openai import keywords_from_abstracts
-from _openalex import get_papers_from_dois
+import json
+import logging
+from refbro import app  # Import the Flask app from refbro.py
 
-
-"https://doi.org/10.48550/arXiv.2501.05252"
-
-async def queries_test():
+def test_queries():
+    # Configure logging to show in terminal
+    app.logger.setLevel(logging.INFO)  # Set Flask logger level
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    app.logger.addHandler(handler)
+    
+    # Test data
     dois = [
-        "https://doi.org/10.48550/arXiv.2411.19865",
-        "https://doi.org/10.48550/arXiv.2009.13207",
-        "https://doi.org/10.1007/s11047-013-9380-y"
+        "10.48550/arXiv.2411.19865",
+        "10.48550/arXiv.2009.13207",
+        "10.1007/s11047-013-9380-y"
     ]
-
-    import time
-    start = time.time()
-    papers = get_papers_from_dois(dois)
-    print(f"OPENALEX:       Getting papers took {time.time() - start:.2f} seconds")
-
-    start = time.time()
-    kwords = keywords_from_abstracts(papers)
-    print(f"OPENAI:         Generating keywords took {time.time() - start:.2f} seconds")
-
-    start = time.time()
-    search = await multi_search(kwords)
-    print(f"OPENALEX:       Searching papers took {time.time() - start:.2f} seconds")
-
-    start = time.time()
-    recomm = rank_results(search)
-    print(f"MATRIX STUFF:   Ranking results took {time.time() - start:.2f} seconds")
-    return recomm
+    
+    # Create application and request context
+    with app.app_context(), app.test_client() as client:
+        response = client.post('/queries', 
+                            json={'queries': dois},
+                            content_type='application/json')
+        
+        print("\nAPI Response:")
+        print(json.dumps(response.json, indent=2))
+        
+        return response.json
 
 if __name__ == "__main__":
-    recomm = asyncio.run(queries_test())
-    return_values = [
-        "title", 
-        "abstract",
-        "doi", 
-        "authorships"
-        "publication_year", 
-        "score"
-        ]
-    print(recomm)
+    recommendations = test_queries()
 
 
 

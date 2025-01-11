@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, current_app
 from flask_cors import CORS
 
 from main import multi_search, rank_results
@@ -61,29 +61,23 @@ async def get_recommendations():
     if not dois:
         return jsonify({"error": "No queries provided"}), 400
     try: 
-        # convert dois into dataframe of papers
-        app.logger.info("retrieving papers from dois")
         papers = get_papers_from_dois(dois)
         if papers.empty:
             return jsonify({"error": "No valid papers found for the provided DOIs"}), 400
 
-        app.logger.info("extracting keywords with oai")
         kwords = keywords_from_abstracts(papers)
         if not kwords:
             return jsonify({"error": "Failed to generate keywords from papers"}), 500
 
-        app.logger.info("keywords search on openalex")
         search = await multi_search(kwords, n_results=500, per_page=200)
         if search.empty:
             return jsonify({"error": "No search results found"}), 404
 
-        app.logger.info("ranking the results")
         recomm = rank_results(search, top_k=20)
         
-        app.logger.info("extracting abstract")
+        current_app.logger.info("extracting abstract")
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
         
-        app.logger.info("retrieving papers from dois")
         try:
             recommendations = recomm[[
                 "title", 
@@ -95,7 +89,7 @@ async def get_recommendations():
                 "score",
             ]].to_dict("records")
         except KeyError as e:
-            app.logger.error(f"Missing required column in results: {e}")
+            current_app.logger.error(f"Missing required column in results: {e}")
             return jsonify({"error": f"Invalid data structure in results: missing {e}"}), 500
 
         formatted_recommendations = []
@@ -112,16 +106,16 @@ async def get_recommendations():
                 }
                 formatted_recommendations.append(formatted_paper)
             except Exception as e:
-                app.logger.error(f"Error formatting paper: {str(e)}")
+                current_app.logger.error(f"Error formatting paper: {str(e)}")
                 continue
 
         if not formatted_recommendations:
             return jsonify({"error": "Failed to format any recommendations"}), 500
 
-        app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
+        current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
         return jsonify({"recommendations": formatted_recommendations})
     except Exception as e:
-        app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
