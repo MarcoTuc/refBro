@@ -10,17 +10,26 @@ from _openalex import get_papers_from_dois, reconstruct_abstract
 os.environ["PYTHONUNBUFFERED"] = "0"
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "http://localhost:5173", 
-            "http://localhost:3000", 
-            "https://refbro-ui.vercel.app",
-            "https://refbro.onrender.com/", 
-            "https://oshimascience.com",
-            ]  # Add any other frontend origins you need
-    }
-})
+CORS(app, origins=[
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://refbro-ui.vercel.app",
+    "https://refbro.onrender.com",
+    "https://oshimascience.com",
+    "https://www.oshimascience.com"
+])
+
+@app.before_request
+def log_request_info():
+    current_app.logger.info(f"Request Origin: {request.headers.get('Origin')}")
+    current_app.logger.info(f"Request Method: {request.method}")
+    current_app.logger.info(f"Request Headers: {dict(request.headers)}")
+
+@app.after_request
+def after_request(response):
+    # Log response headers for debugging
+    current_app.logger.info(f"Response Headers: {dict(response.headers)}")
+    return response
 
 @app.route("/")
 def home():
