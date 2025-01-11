@@ -2,10 +2,11 @@ import os
 from flask import Flask, jsonify, request, render_template, current_app
 from flask_cors import CORS
 import tracemalloc
+import traceback
 
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
-from _openalex import get_papers_from_dois, reconstruct_abstract
+from _openalex import get_papers_from_dois, reconstruct_abstract, fetch_all_citation_networks
 
 os.environ["PYTHONUNBUFFERED"] = "0"
 
@@ -71,7 +72,6 @@ def format_journal(primary_location):
 
 @app.route("/queries", methods=["POST"])
 async def get_recommendations():
-    # Start memory tracking
     tracemalloc.start()
     
     dois = request.json.get("queries", [])
@@ -80,7 +80,7 @@ async def get_recommendations():
     if not dois:
         return jsonify({"error": "No queries provided"}), 400
     try: 
-        papers = get_papers_from_dois(dois)
+        papers = await get_papers_from_dois(dois)
         if papers.empty:
             return jsonify({"error": "No valid papers found for the provided DOIs"}), 400
 
@@ -162,6 +162,98 @@ async def get_recommendations():
         tracemalloc.stop()  # Make sure to stop tracking even if there's an error
         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/v1/colab", methods=["POST"])
+async def colab():
+    tracemalloc.start()
+    
+    try:
+        dois = request.json.get("queries", [])
+        current_app.logger.info(f"Received request with DOIs: {dois}")
+        
+        if not dois:
+            return jsonify({"error": "No queries provided"}), 400
+            
+        current_app.logger.info("Starting citation network fetch")
+        search = await fetch_all_citation_networks(dois, total_max_papers=1000)
+        
+        if search is None:
+            current_app.logger.error("Citation network fetch returned None")
+            return jsonify({"error": "Citation network fetch returned None"}), 500
+            
+        current_app.logger.info(f"Citation network fetch completed. DataFrame shape: {search.shape}")
+        
+        include_unranked = request.json.get("include_unranked", False)
+        
+        unranked_dois = search['doi'].tolist() if include_unranked else None
+        
+        # Use existing ranking method
+        recomm = rank_results(search, top_k=20)
+        
+        current_app.logger.info("extracting abstract")
+        recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
+        
+        try:
+            recommendations = recomm[[
+                "title", 
+                "abstract",
+                "doi", 
+                "authorships",
+                "publication_year", 
+                "primary_location",
+                "score",
+            ]].to_dict("records")
+        except KeyError as e:
+            current_app.logger.error(f"Missing required column in results: {e}")
+            return jsonify({"error": f"Invalid data structure in results: missing {e}"}), 500
+
+        formatted_recommendations = []
+        for paper in recommendations:
+            try:
+                formatted_paper = {
+                    'title': paper['title'],
+                    'abstract': paper['abstract'],
+                    'doi': paper['doi'],
+                    'authors': format_authors(paper['authorships']),
+                    'journal': format_journal(paper['primary_location']),
+                    'year': paper['publication_year'],
+                    'score': paper['score']
+                }
+                formatted_recommendations.append(formatted_paper)
+            except Exception as e:
+                current_app.logger.error(f"Error formatting paper: {str(e)}")
+                continue
+
+        if not formatted_recommendations:
+            return jsonify({"error": "Failed to format any recommendations"}), 500
+
+        current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
+        response_data = {"recommendations": formatted_recommendations}
+        if include_unranked:
+            response_data["unranked_dois"] = unranked_dois
+            
+        # Memory tracking
+        current, peak = tracemalloc.get_traced_memory()
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        
+        current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
+        current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
+        current_app.logger.info("Top 3 memory blocks:")
+        for stat in top_stats[:3]:
+            current_app.logger.info(stat)
+            
+        tracemalloc.stop()
+        return jsonify(response_data)
+        
+    except Exception as e:
+        tracemalloc.stop()
+        current_app.logger.error(f"Error in colab endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "error": f"Failed to process citation networks: {str(e)}",
+            "dois_attempted": dois,
+            "traceback": traceback.format_exc()
+        }), 500
 
 
 if __name__ == '__main__':
