@@ -169,42 +169,27 @@ async def colab():
     
     try:
         dois = request.json.get("queries", [])
-        current_app.logger.info(f"Received request with DOIs: {dois}")
-        
         if not dois:
             return jsonify({"error": "No queries provided"}), 400
             
-        current_app.logger.info("Starting citation network fetch")
-        search = await fetch_all_citation_networks(dois, total_max_papers=1000)
+        search = await fetch_all_citation_networks(dois, total_max_papers=2000)
         
         if search is None:
-            current_app.logger.error("Citation network fetch returned None")
             return jsonify({"error": "Citation network fetch returned None"}), 500
             
-        current_app.logger.info(f"Citation network fetch completed. DataFrame shape: {search.shape}")
-        
         include_unranked = request.json.get("include_unranked", False)
-        
         unranked_dois = search['doi'].tolist() if include_unranked else None
         
         # Use existing ranking method
         recomm = rank_results(search, top_k=20)
-        
-        current_app.logger.info("extracting abstract")
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
         
         try:
             recommendations = recomm[[
-                "title", 
-                "abstract",
-                "doi", 
-                "authorships",
-                "publication_year", 
-                "primary_location",
-                "score",
+                "title", "abstract", "doi", "authorships",
+                "publication_year", "primary_location", "score",
             ]].to_dict("records")
         except KeyError as e:
-            current_app.logger.error(f"Missing required column in results: {e}")
             return jsonify({"error": f"Invalid data structure in results: missing {e}"}), 500
 
         formatted_recommendations = []

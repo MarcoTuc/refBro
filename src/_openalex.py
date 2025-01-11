@@ -148,28 +148,56 @@ async def fetch_citation_network(doi: str, max_papers: int) -> pd.DataFrame:
         current_app.logger.error(f"Error in fetch_citation_network for DOI {doi}: {str(e)}")
         raise
 
-async def fetch_all_citation_networks(dois: List[str], total_max_papers: int = 1000) -> pd.DataFrame:
-    """Fetch citation networks for multiple papers"""
-    current_app.logger.info(f"Starting fetch_all_citation_networks with {len(dois)} DOIs")
-    papers_per_doi = total_max_papers // len(dois)
+async def fetch_all_citation_networks(dois: List[str], total_max_papers: int = 2000) -> pd.DataFrame:
+    """Fetch two layers of citation networks for multiple papers"""
+    papers_per_layer = total_max_papers // 2  # Split limit between layers
     
     try:
+        # Layer 1: Full citation networks (cited_by + references) for input DOIs
+        papers_per_doi = papers_per_layer // len(dois)
         tasks = [fetch_citation_network(doi, papers_per_doi) for doi in dois]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Process results
-        valid_results = []
+        # Process Layer 1 results
+        layer1_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 current_app.logger.error(f"Failed to fetch network for DOI {dois[i]}: {str(result)}")
-            elif isinstance(result, pd.DataFrame):
-                current_app.logger.info(f"Successfully fetched network for DOI {dois[i]}: {len(result)} papers")
-                valid_results.append(result)
+            elif isinstance(result, pd.DataFrame) and not result.empty:
+                layer1_results.append(result)
         
-        if not valid_results:
+        if not layer1_results:
             raise Exception(f"Failed to fetch citation networks for all {len(dois)} DOIs")
+            
+        # Combine Layer 1 results and remove duplicates
+        layer1_df = pd.concat(layer1_results, ignore_index=True).drop_duplicates(subset=['doi'])
         
-        final_df = pd.concat(valid_results, ignore_index=True).drop_duplicates(subset=['doi'])
+        # Layer 2: Fetch only cited_by papers for Layer 1 results
+        papers_per_source = papers_per_layer // len(layer1_df)
+        layer2_tasks = []
+        
+        for _, paper in layer1_df.iterrows():
+            if 'cited_by_api_url' in paper:
+                task = fetch_cited_by_papers(paper['cited_by_api_url'], max_results=papers_per_source)
+                layer2_tasks.append(task)
+        
+        if layer2_tasks:
+            layer2_results = await asyncio.gather(*layer2_tasks, return_exceptions=True)
+            valid_layer2_results = []
+            
+            for result in layer2_results:
+                if isinstance(result, list) and result:  # Skip exceptions and empty results
+                    valid_layer2_results.extend(result)
+            
+            if valid_layer2_results:
+                layer2_df = pd.DataFrame(valid_layer2_results).drop_duplicates(subset=['doi'])
+                # Combine both layers, removing duplicates
+                final_df = pd.concat([layer1_df, layer2_df], ignore_index=True).drop_duplicates(subset=['doi'])
+            else:
+                final_df = layer1_df
+        else:
+            final_df = layer1_df
+        
         current_app.logger.info(f"Final combined DataFrame has {len(final_df)} papers")
         return final_df
         
