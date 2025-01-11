@@ -28,9 +28,10 @@ def get_papers_from_dois(dois_list: list[str]) -> pd.DataFrame:
 
 def get_paper_from_doi(doi: str) -> list[dict]:
     base_doi = "https://doi.org"
-    if doi[:15] != base_doi: 
-        doi = f"{base_doi}/{doi.split('doi.org/')[-1]}"
-    url = f"{BASE_OPENALEX}/works/{doi}?mailto={OPENALEX_EMAIL}"
+    # Clean the DOI to handle various input formats
+    clean_doi = doi.replace("https://doi.org/", "").replace("http://doi.org/", "")
+    doi_url = f"{base_doi}/{clean_doi}"
+    url = f"{BASE_OPENALEX}/works/{doi_url}?mailto={OPENALEX_EMAIL}"
     
     try:
         response = requests.get(url)
