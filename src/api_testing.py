@@ -22,7 +22,10 @@ def test_queries():
     # Create application and request context
     with app.app_context(), app.test_client() as client:
         response = client.post('/queries', 
-                            json={'queries': dois},
+                            json={
+                                'queries': dois,
+                                'include_unranked': False
+                                },
                             content_type='application/json')
         
         print("\nAPI Response:")

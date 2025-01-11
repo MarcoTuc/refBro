@@ -58,6 +58,8 @@ def format_journal(primary_location):
 @app.route("/queries", methods=["POST"])
 async def get_recommendations():
     dois = request.json.get("queries", [])
+    include_unranked = request.json.get("include_unranked", False)
+    
     if not dois:
         return jsonify({"error": "No queries provided"}), 400
     try: 
@@ -73,7 +75,7 @@ async def get_recommendations():
         if search.empty:
             return jsonify({"error": "No search results found"}), 404
         
-        unranked_dois = search['doi'].tolist()
+        unranked_dois = search['doi'].tolist() if include_unranked else None
 
         recomm = rank_results(search, top_k=20)
         
@@ -115,10 +117,11 @@ async def get_recommendations():
             return jsonify({"error": "Failed to format any recommendations"}), 500
 
         current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
-        return jsonify({
-            "recommendations": formatted_recommendations,
-            "unranked_dois": unranked_dois
-            })
+        response_data = {"recommendations": formatted_recommendations}
+        if include_unranked:
+            response_data["unranked_dois"] = unranked_dois
+            
+        return jsonify(response_data)
     except Exception as e:
         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
