@@ -17,7 +17,11 @@ CORS(app, origins=[
     "https://refbro.onrender.com",
     "https://oshimascience.com",
     "https://www.oshimascience.com"
-], allow_headers=["Content-Type"], methods=["POST", "OPTIONS"])
+], 
+allow_headers=["Content-Type"], 
+methods=["POST", "OPTIONS"],
+expose_headers=["Content-Type"],
+)
 
 @app.before_request
 def log_request_info():
