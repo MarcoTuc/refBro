@@ -72,6 +72,8 @@ async def get_recommendations():
         search = await multi_search(kwords, n_results=500, per_page=200)
         if search.empty:
             return jsonify({"error": "No search results found"}), 404
+        
+        unranked_dois = search['doi'].tolist()
 
         recomm = rank_results(search, top_k=20)
         
@@ -113,7 +115,10 @@ async def get_recommendations():
             return jsonify({"error": "Failed to format any recommendations"}), 500
 
         current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
-        return jsonify({"recommendations": formatted_recommendations})
+        return jsonify({
+            "recommendations": formatted_recommendations,
+            "unranked_dois": unranked_dois
+            })
     except Exception as e:
         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
