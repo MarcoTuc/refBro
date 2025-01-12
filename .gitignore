@@ -4,3 +4,4 @@ vector_data
 config.yml
 .exp
 .env
+google-credentials.json

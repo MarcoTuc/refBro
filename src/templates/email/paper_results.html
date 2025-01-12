@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .paper { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .title { font-size: 18px; font-weight: bold; color: #2c5282; }
+        .authors { color: #4a5568; margin: 5px 0; }
+        .journal { color: #718096; font-style: italic; }
+        .abstract { margin-top: 10px; }
+        .score { color: #48bb78; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Your Oshima Paper Recommendations</h1>
+    <p>Here are your requested paper recommendations:</p>
+    
+    {% for paper in papers %}
+    <div class="paper">
+        <div class="title">{{ paper.title }}</div>
+        <div class="authors">{{ paper.authors }}</div>
+        <div class="journal">{{ paper.journal }} ({{ paper.year }})</div>
+        <div class="score">Relevance Score: {{ "%.2f"|format(paper.score) }}</div>
+        <div class="abstract">{{ paper.abstract }}</div>
+        <a href="https://doi.org/{{ paper.doi }}">View Paper</a>
+    </div>
+    {% endfor %}
+    
+    <p>Best regards,<br>Carla</p>
+</body>
+</html> 

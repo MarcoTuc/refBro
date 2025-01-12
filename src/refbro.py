@@ -4,6 +4,11 @@ from flask_cors import CORS
 import tracemalloc
 import traceback
 from functools import wraps
+from flask_mail import Mail, Message
+from datetime import datetime
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import json
 
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
@@ -27,6 +32,64 @@ expose_headers=["Content-Type"],
 
 # Add environment variable for memory tracking
 ENABLE_MEMORY_TRACKING = os.getenv('DISABLE_MEMORY_TRACKING', 'false').lower() != 'true'
+
+# Email configuration
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
+
+mail = Mail(app)
+
+# Google Sheets configuration
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+EMAILS_SPREADSHEET_ID = os.getenv('EMAILS_SPREADSHEET_ID')
+FEEDBACK_SPREADSHEET_ID = os.getenv('FEEDBACK_SPREADSHEET_ID')
+
+def get_google_sheets_service():
+    try:
+        # Check if we have the JSON directly in environment (production)
+        creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
+        if creds_json:
+            creds_dict = json.loads(creds_json)
+            credentials = service_account.Credentials.from_service_account_info(
+                creds_dict, scopes=SCOPES)
+        else:
+            # Fallback to file (local development)
+            credentials = service_account.Credentials.from_service_account_file(
+                os.getenv('GOOGLE_CREDENTIALS_PATH', 'google-credentials.json'), 
+                scopes=SCOPES)
+            
+        service = build('sheets', 'v4', credentials=credentials)
+        return service
+    except Exception as e:
+        current_app.logger.error(f"Error creating Google Sheets service: {str(e)}")
+        return None
+
+def append_to_sheet(spreadsheet_id, values):
+    try:
+        service = get_google_sheets_service()
+        if not service:
+            raise Exception("Could not initialize Google Sheets service")
+            
+        body = {
+            'values': [values]
+        }
+        
+        result = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range='A1',
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body=body
+        ).execute()
+        
+        return result
+    except Exception as e:
+        current_app.logger.error(f"Error appending to sheet: {str(e)}")
+        raise
 
 def track_memory(func):
     @wraps(func)
@@ -239,6 +302,94 @@ async def colab():
             "traceback": traceback.format_exc()
         }), 500
 
+@app.route("/send-results", methods=["POST"])
+def send_results():
+    try:
+        data = request.json
+        if not data or 'email' not in data or 'papers' not in data:
+            return jsonify({"error": "Missing email or papers in request"}), 400
+            
+        recipient_email = data['email']
+        papers = data['papers']
+        
+        if not isinstance(papers, list) or not papers:
+            return jsonify({"error": "Papers must be a non-empty list"}), 400
+            
+        msg = Message(
+            subject="Your RefBro Paper Results",
+            recipients=[recipient_email],
+            html=render_template('email/paper_results.html', papers=papers)
+        )
+        
+        mail.send(msg)
+        
+        # Save to Google Sheet
+        if EMAILS_SPREADSHEET_ID:
+            try:
+                timestamp = datetime.now().isoformat()
+                row_data = [
+                    timestamp,
+                    recipient_email,
+                    len(papers),
+                    ', '.join(p.get('doi', '') for p in papers)
+                ]
+                append_to_sheet(EMAILS_SPREADSHEET_ID, row_data)
+            except Exception as e:
+                current_app.logger.error(f"Error saving to sheet: {str(e)}")
+        
+        return jsonify({"message": "Results sent successfully"}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No feedback data provided"}), 400
+            
+        rating = data.get('rating')
+        feedback_text = data.get('feedback')
+        user_email = data.get('email', 'Anonymous')
+        
+        # Create email content
+        feedback_content = f"""
+        New Feedback Received:
+        
+        Rating: {rating if rating else 'Not provided'}
+        Email: {user_email}
+        Feedback: {feedback_text if feedback_text else 'Not provided'}
+        """
+        
+        msg = Message(
+            subject="New RefBro Feedback Received",
+            recipients=["ostmanncarla@gmail.com"],
+            body=feedback_content
+        )
+        
+        mail.send(msg)
+        
+        # Save to Google Sheet
+        if FEEDBACK_SPREADSHEET_ID:
+            try:
+                timestamp = datetime.now().isoformat()
+                row_data = [
+                    timestamp,
+                    rating or 'Not provided',
+                    feedback_text or 'Not provided',
+                    user_email
+                ]
+                append_to_sheet(FEEDBACK_SPREADSHEET_ID, row_data)
+            except Exception as e:
+                current_app.logger.error(f"Error saving to sheet: {str(e)}")
+        
+        return jsonify({"message": "Feedback received successfully"}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error processing feedback: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))  # Use PORT env var, default to 5000 for local dev

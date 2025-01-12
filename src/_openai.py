@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import pandas as pd
 
 from pydantic import BaseModel
@@ -6,6 +7,8 @@ from openai import OpenAI
 from flask import current_app
 from prompting.systemprompts import *
 
+# Load environment variables from .env file
+load_dotenv()
 
 client_oai = OpenAI(api_key=os.environ.get("OPENAI_REFBRO_KEY"))
 
