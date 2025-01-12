@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request, render_template, current_app
 from flask_cors import CORS
 import tracemalloc
 import traceback
+from functools import wraps
 
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
@@ -23,6 +24,36 @@ allow_headers=["Content-Type"],
 methods=["POST", "OPTIONS"],
 expose_headers=["Content-Type"],
 )
+
+# Add environment variable for memory tracking
+ENABLE_MEMORY_TRACKING = os.getenv('DISABLE_MEMORY_TRACKING', 'false').lower() != 'true'
+
+def track_memory(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        if not ENABLE_MEMORY_TRACKING:
+            return await func(*args, **kwargs)
+            
+        tracemalloc.start()
+        try:
+            result = await func(*args, **kwargs)
+            
+            # Memory tracking
+            current, peak = tracemalloc.get_traced_memory()
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics('lineno')
+            
+            current_app.logger.info(f"Memory usage for {func.__name__}:")
+            current_app.logger.info(f"Current: {current / 10**6:.1f}MB")
+            current_app.logger.info(f"Peak: {peak / 10**6:.1f}MB")
+            current_app.logger.info("Top 3 memory blocks:")
+            for stat in top_stats[:3]:
+                current_app.logger.info(stat)
+                
+            return result
+        finally:
+            tracemalloc.stop()
+    return wrapper
 
 @app.before_request
 def log_request_info():
@@ -74,9 +105,8 @@ def format_journal(primary_location):
     return source.get('display_name', 'Unknown Journal')
 
 @app.route("/queries", methods=["POST"])
+@track_memory
 async def get_recommendations():
-    tracemalloc.start()
-    
     dois = request.json.get("queries", [])
     include_unranked = request.json.get("include_unranked", False)
     
@@ -141,35 +171,14 @@ async def get_recommendations():
         if include_unranked:
             response_data["unranked_dois"] = unranked_dois
             
-        # Take a snapshot after the main operations
-        current, peak = tracemalloc.get_traced_memory()
-        
-        # Get detailed memory statistics
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-        
-        # Log memory usage
-        current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
-        current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
-        
-        # Log top 3 memory blocks
-        current_app.logger.info("Top 3 memory blocks:")
-        for stat in top_stats[:3]:
-            current_app.logger.info(stat)
-            
-        # Stop tracking at the end
-        tracemalloc.stop()
-        
         return jsonify(response_data)
     except Exception as e:
-        tracemalloc.stop()  # Make sure to stop tracking even if there's an error
         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
     
 @app.route("/v1/colab", methods=["POST"])
+@track_memory
 async def colab():
-    tracemalloc.start()
-    
     try:
         dois = request.json.get("queries", [])
         if not dois:
@@ -220,22 +229,9 @@ async def colab():
         if include_unranked:
             response_data["unranked_dois"] = unranked_dois
             
-        # Memory tracking
-        current, peak = tracemalloc.get_traced_memory()
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-        
-        current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
-        current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
-        current_app.logger.info("Top 3 memory blocks:")
-        for stat in top_stats[:3]:
-            current_app.logger.info(stat)
-            
-        tracemalloc.stop()
         return jsonify(response_data)
         
     except Exception as e:
-        tracemalloc.stop()
         current_app.logger.error(f"Error in colab endpoint: {str(e)}", exc_info=True)
         return jsonify({
             "error": f"Failed to process citation networks: {str(e)}",
