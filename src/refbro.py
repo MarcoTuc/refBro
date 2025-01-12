@@ -32,9 +32,12 @@ def log_request_info():
 
 @app.after_request
 def after_request(response):
-    # Log response headers for debugging
-    current_app.logger.info(f"Response Headers: {dict(response.headers)}")
+    response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    current_app.logger.info(f"Final Response Headers: {response.headers}")
     return response
+
 
 @app.route("/")
 def home():
@@ -71,97 +74,101 @@ def format_journal(primary_location):
     return source.get('display_name', 'Unknown Journal')
 
 @app.route("/queries", methods=["POST"])
-async def get_recommendations():
-    tracemalloc.start()
+def test_route():
+    return jsonify({"message": "Test response"})
+
+# @app.route("/queries", methods=["POST"])
+# async def get_recommendations():
+#     tracemalloc.start()
     
-    dois = request.json.get("queries", [])
-    include_unranked = request.json.get("include_unranked", False)
+#     dois = request.json.get("queries", [])
+#     include_unranked = request.json.get("include_unranked", False)
     
-    if not dois:
-        return jsonify({"error": "No queries provided"}), 400
-    try: 
-        papers = await get_papers_from_dois(dois)
-        if papers.empty:
-            return jsonify({"error": "No valid papers found for the provided DOIs"}), 400
+#     if not dois:
+#         return jsonify({"error": "No queries provided"}), 400
+#     try: 
+#         papers = await get_papers_from_dois(dois)
+#         if papers.empty:
+#             return jsonify({"error": "No valid papers found for the provided DOIs"}), 400
 
-        kwords = keywords_from_abstracts(papers)
-        if not kwords:
-            return jsonify({"error": "Failed to generate keywords from papers"}), 500
+#         kwords = keywords_from_abstracts(papers)
+#         if not kwords:
+#             return jsonify({"error": "Failed to generate keywords from papers"}), 500
 
-        search = await multi_search(kwords, n_results=500, per_page=200)
-        if search.empty:
-            return jsonify({"error": "No search results found"}), 404
+#         search = await multi_search(kwords, n_results=500, per_page=200)
+#         if search.empty:
+#             return jsonify({"error": "No search results found"}), 404
         
-        unranked_dois = search['doi'].tolist() if include_unranked else None
+#         unranked_dois = search['doi'].tolist() if include_unranked else None
 
-        recomm = rank_results(search, top_k=20)
+#         recomm = rank_results(search, top_k=20)
         
-        current_app.logger.info("extracting abstract")
-        recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
+#         current_app.logger.info("extracting abstract")
+#         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
         
-        try:
-            recommendations = recomm[[
-                "title", 
-                "abstract",
-                "doi", 
-                "authorships",
-                "publication_year", 
-                "primary_location",
-                "score",
-            ]].to_dict("records")
-        except KeyError as e:
-            current_app.logger.error(f"Missing required column in results: {e}")
-            return jsonify({"error": f"Invalid data structure in results: missing {e}"}), 500
+#         try:
+#             recommendations = recomm[[
+#                 "title", 
+#                 "abstract",
+#                 "doi", 
+#                 "authorships",
+#                 "publication_year", 
+#                 "primary_location",
+#                 "score",
+#             ]].to_dict("records")
+#         except KeyError as e:
+#             current_app.logger.error(f"Missing required column in results: {e}")
+#             return jsonify({"error": f"Invalid data structure in results: missing {e}"}), 500
 
-        formatted_recommendations = []
-        for paper in recommendations:
-            try:
-                formatted_paper = {
-                    'title': paper['title'],
-                    'abstract': paper['abstract'],
-                    'doi': paper['doi'],
-                    'authors': format_authors(paper['authorships']),
-                    'journal': format_journal(paper['primary_location']),
-                    'year': paper['publication_year'],
-                    'score': paper['score']
-                }
-                formatted_recommendations.append(formatted_paper)
-            except Exception as e:
-                current_app.logger.error(f"Error formatting paper: {str(e)}")
-                continue
+#         formatted_recommendations = []
+#         for paper in recommendations:
+#             try:
+#                 formatted_paper = {
+#                     'title': paper['title'],
+#                     'abstract': paper['abstract'],
+#                     'doi': paper['doi'],
+#                     'authors': format_authors(paper['authorships']),
+#                     'journal': format_journal(paper['primary_location']),
+#                     'year': paper['publication_year'],
+#                     'score': paper['score']
+#                 }
+#                 formatted_recommendations.append(formatted_paper)
+#             except Exception as e:
+#                 current_app.logger.error(f"Error formatting paper: {str(e)}")
+#                 continue
 
-        if not formatted_recommendations:
-            return jsonify({"error": "Failed to format any recommendations"}), 500
+#         if not formatted_recommendations:
+#             return jsonify({"error": "Failed to format any recommendations"}), 500
 
-        current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
-        response_data = {"recommendations": formatted_recommendations}
-        if include_unranked:
-            response_data["unranked_dois"] = unranked_dois
+#         current_app.logger.info(f"{len(formatted_recommendations)} Recommendations formatted correctly")
+#         response_data = {"recommendations": formatted_recommendations}
+#         if include_unranked:
+#             response_data["unranked_dois"] = unranked_dois
             
-        # Take a snapshot after the main operations
-        current, peak = tracemalloc.get_traced_memory()
+#         # Take a snapshot after the main operations
+#         current, peak = tracemalloc.get_traced_memory()
         
-        # Get detailed memory statistics
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
+#         # Get detailed memory statistics
+#         snapshot = tracemalloc.take_snapshot()
+#         top_stats = snapshot.statistics('lineno')
         
-        # Log memory usage
-        current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
-        current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
+#         # Log memory usage
+#         current_app.logger.info(f"Current memory usage: {current / 10**6:.1f}MB")
+#         current_app.logger.info(f"Peak memory usage: {peak / 10**6:.1f}MB")
         
-        # Log top 3 memory blocks
-        current_app.logger.info("Top 3 memory blocks:")
-        for stat in top_stats[:3]:
-            current_app.logger.info(stat)
+#         # Log top 3 memory blocks
+#         current_app.logger.info("Top 3 memory blocks:")
+#         for stat in top_stats[:3]:
+#             current_app.logger.info(stat)
             
-        # Stop tracking at the end
-        tracemalloc.stop()
+#         # Stop tracking at the end
+#         tracemalloc.stop()
         
-        return jsonify(response_data)
-    except Exception as e:
-        tracemalloc.stop()  # Make sure to stop tracking even if there's an error
-        current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+#         return jsonify(response_data)
+#     except Exception as e:
+#         tracemalloc.stop()  # Make sure to stop tracking even if there's an error
+#         current_app.logger.error(f"Error in get_recommendations: {str(e)}", exc_info=True)
+#         return jsonify({"error": str(e)}), 500
     
 @app.route("/v1/colab", methods=["POST"])
 async def colab():
