@@ -126,14 +126,17 @@ def get_npmimatrix(results: pd.DataFrame, return_idx=True) -> np.ndarray:
     else: 
         return npmimatrix
 
-def rank_results(results: pd.DataFrame, top_k=20) -> pd.DataFrame: 
+def rank_results(results: pd.DataFrame, top_k=20, exclude_dois: List[str] = None) -> pd.DataFrame: 
     npmimatrix, idx_t = get_npmimatrix(results, return_idx=True)
     results["score"] = 0.0
     for i, work in results.iterrows():
         topics = work["topics"]
         for ti, tj in combinations(topics, r=2):
-            # Fix: use ti and tj for the two different indices
             results.loc[i, "score"] += npmimatrix[idx_t[ti["id"]], idx_t[tj["id"]]]
+    # Drop duplicates and exclude input DOIs
+    results = results.drop_duplicates(subset=['doi'])
+    if exclude_dois:
+        results = results[~results['doi'].isin(exclude_dois)]
     results = results.sort_values(by="score", ascending=True)
     return results[:top_k]
 
