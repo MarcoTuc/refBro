@@ -4,14 +4,11 @@ import pandas as pd
 
 from pydantic import BaseModel
 from openai import OpenAI
-from flask import current_app
-from prompting.systemprompts import *
 
-# Load environment variables from .env file
-load_dotenv()
+from app import app
+from app.prompting.systemprompts import *
 
-client_oai = OpenAI(api_key=os.environ.get("OPENAI_REFBRO_KEY"))
-
+client_oai = OpenAI(api_key=app.config["OPENAI_KEY"])
 
 class SearchList(BaseModel):
     queries: list[str]
@@ -28,7 +25,7 @@ def format_abstracts_for_oai_userprompt(papers: pd.DataFrame) -> str:
 def keywords_from_abstracts(papers: pd.DataFrame):
     user_prompt = format_abstracts_for_oai_userprompt(papers)
     try:
-        current_app.logger.info("Sending request to OpenAI API")
+        app.logger.info("Sending request to OpenAI API")
         completion = client_oai.beta.chat.completions.parse(
             model="gpt-4o",
             messages=[
@@ -43,8 +40,8 @@ def keywords_from_abstracts(papers: pd.DataFrame):
             ],
             response_format=SearchList,
         )
-        current_app.logger.info(f"Generated {len(completion.choices[0].message.parsed.queries)} search queries")
+        app.logger.info(f"Generated {len(completion.choices[0].message.parsed.queries)} search queries")
         return completion.choices[0].message.parsed.queries
     except Exception as e: 
-        current_app.logger.error(f"OpenAI API error: {str(e)}")
+        app.logger.error(f"OpenAI API error: {str(e)}")
         raise

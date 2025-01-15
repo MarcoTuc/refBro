@@ -1,16 +1,16 @@
 import asyncio
 import json
 import logging
-from refbro import app  # Import the Flask app from refbro.py
+from app import app
 
 def test_queries():
     # Configure logging to show in terminal
-    app.logger.setLevel(logging.INFO)  # Set Flask logger level
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
-    handler.setFormatter(formatter)
-    app.logger.addHandler(handler)
+    # app.logger.setLevel(logging.INFO)  # Set Flask logger level
+    # handler = logging.StreamHandler()
+    # handler.setLevel(logging.INFO)
+    # formatter = logging.Formatter('%(levelname)s: %(message)s')
+    # handler.setFormatter(formatter)
+    # app.logger.addHandler(handler)
     
     # Test data
     dois = [

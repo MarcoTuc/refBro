@@ -5,18 +5,19 @@ import hashlib
 import base64
 import urllib.parse
 from requests_oauthlib import OAuth1
-from flask import current_app
+from app import app
 
 
 # Our Zotero API keys
-client_key = "962a6a380e931fd4a2d0"
-client_secret = "a3506e647b0927d9ecfa"
-callback_url = "https://oshimascience.com/zotero-success"
+client_key = app.config["ZOTERO_CLIENT_KEY"]
+client_secret = app.config["ZOTERO_CLIENT_SECRET"]
+callback_url = app.config["ZOTERO_CALLBACK_URL"] # maybe this one can be public?
 
 # Zotero API endpoints
 request_token_endpoint = 'https://www.zotero.org/oauth/request'
 zotero_authorize_endpoint = 'https://www.zotero.org/oauth/authorize'
 access_token_endpoint = 'https://www.zotero.org/oauth/access'
+
 def generate_oauth_signature(base_string, signing_key):
     """Generates an HMAC-SHA1 signature."""
     hashed = hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1)
@@ -72,7 +73,7 @@ def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
     response = requests.post(access_token_endpoint, auth=oauth)
 
     if response.status_code != 200:
-        current_app.logger.error(f"Failed to get access token from Zotero. Status: {response.status_code}, Response: {response.text}")
+        app.logger.error(f"Failed to get access token from Zotero. Status: {response.status_code}, Response: {response.text}")
         raise Exception("Failed to get access token from Zotero")
 
     # Parse the access token and secret from the response
