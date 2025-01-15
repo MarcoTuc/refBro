@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, render_template, current_app
+from flask import Flask, jsonify, request, render_template, current_app, redirect
 from flask_cors import CORS
 import tracemalloc
 import traceback
@@ -13,6 +13,8 @@ import json
 from main import multi_search, rank_results
 from _openai import keywords_from_abstracts
 from _openalex import get_papers_from_dois, reconstruct_abstract, fetch_all_citation_networks
+from _zotero import get_request_token, get_authorization_url, get_access_token
+from _supabase import save_to_database
 
 os.environ["PYTHONUNBUFFERED"] = "0"
 
@@ -26,9 +28,10 @@ CORS(app, origins=[
     "https://www.oshimascience.com"
 ], 
 allow_headers=["Content-Type"], 
-methods=["POST", "OPTIONS"],
+methods=["GET", "POST", "OPTIONS"],  # Make sure GET is here
 expose_headers=["Content-Type"],
 )
+
 
 # Add environment variable for memory tracking
 ENABLE_MEMORY_TRACKING = os.getenv('DISABLE_MEMORY_TRACKING', 'false').lower() != 'true'
@@ -126,9 +129,10 @@ def log_request_info():
 
 @app.after_request
 def after_request(response):
-    response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, User-Id"
+    response.headers["Access-Control-Expose-Headers"] = "Content-Type"
     current_app.logger.info(f"Final Response Headers: {response.headers}")
     return response
 
@@ -390,6 +394,55 @@ def feedback():
     except Exception as e:
         current_app.logger.error(f"Error processing feedback: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/zotero/request-token", methods=["GET"])
+def zotero_request_token():
+    try:
+        # Get the request token from Zotero
+        request_token, _ = get_request_token()
+
+        # Generate the Zotero authorization URL
+        authorization_url = get_authorization_url(request_token)
+
+        # Return the URL as JSON instead of a redirect
+        return jsonify({"authorization_url": authorization_url}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in Zotero OAuth flow: {str(e)}")
+        return jsonify({"error": "Failed to initiate Zotero OAuth"}), 500
+
+@app.route("/zotero-success", methods=["POST"])
+def zotero_callback():
+    try:
+        data = request.json
+
+        oauth_token = data.get("oauthToken")
+        oauth_verifier = data.get("oauthVerifier")
+        user_id = data.get("userId")
+        current_app.logger.info(f"oauth_token={oauth_token}, oauth_verifier={oauth_verifier}")
+
+        if not oauth_token or not oauth_verifier:
+            return jsonify({"error": "Missing oauth_token or oauth_verifier"}), 400
+
+        if not user_id:
+            return jsonify({"error": "User ID missing in request body"}), 400
+
+        # Exchange the request token for an access token
+        access_token, access_secret = get_access_token(oauth_token, oauth_verifier)
+
+        # Log before saving to database
+        current_app.logger.info(f"Saving to database: user_id={user_id}, access_token={access_token}")
+
+        response = save_to_database(user_id, access_token, access_secret)
+
+        # Log the response from Supabase
+        current_app.logger.info(f"Supabase response: {response}")
+
+        return jsonify({"message": "Zotero account successfully connected!"}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error during Zotero callback: {str(e)}")
+        return jsonify({"error": "Failed to connect Zotero"}), 500
+
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))  # Use PORT env var, default to 5000 for local dev
