@@ -321,9 +321,3 @@ def zotero_callback():
     except Exception as e:
         app.logger.error(f"Error during Zotero callback: {str(e)}")
         return jsonify({"error": "Failed to connect Zotero"}), 500
-
-
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Use PORT env var, default to 5000 for local dev
-    app.run(host="0.0.0.0", port=port, debug=True)
