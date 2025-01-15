@@ -1,4 +1,5 @@
 from supabase import create_client
+from flask import current_app
 
 # Supabase URL and Key
 SUPABASE_URL = "https://wyrflssqbzxklzeowjjn.supabase.co"
@@ -11,15 +12,23 @@ def save_to_database(user_id, access_token, access_secret):
     Save Zotero credentials to the Supabase profiles table.
     """
     try:
+        current_app.logger.debug(f"Attempting to save to database: user_id={user_id}, access_token={access_token}, access_secret={access_secret}")
+
         response = supabase.table("profiles").update({
             "zotero_access_token": access_token,
             "zotero_access_secret": access_secret,
         }).eq("id", user_id).execute()
 
-        if response.status_code != 200:
-            raise Exception(f"Error updating database: {response.json()}")
+        # Check if there's an error in the response
+        if response.get("error"):
+            current_app.logger.error(f"Error updating database: {response['error']}")
+            raise Exception(f"Error updating database: {response['error']}")
 
-        return response.data
+        # Log the successful response
+        current_app.logger.debug(f"Database update successful: {response.get('data')}")
+
+        # Return the data if no error occurred
+        return response.get("data")
     except Exception as e:
-        print(f"Error saving to database: {e}")
+        current_app.logger.error(f"Error saving to database: {e}")
         raise
