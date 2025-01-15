@@ -1,5 +1,5 @@
 from supabase import create_client
-from flask import current_app, request
+from flask import current_app, request, jsonify
 
 SUPABASE_URL = "https://wyrflssqbzxklzeowjjn.supabase.co"
 
@@ -21,7 +21,11 @@ def save_to_database(user_id, access_token, access_secret):
         current_app.logger.debug(f"Attempting to save to database: user_id={user_id}, access_token={access_token}, access_secret={access_secret}")
         
         # Initialize Supabase client with the user's JWT
-        supabase = get_supabase_client()
+        try:
+            supabase = get_supabase_client()
+        except Exception as e:
+            current_app.logger.error(f"Supabase client initialization failed: {e}")
+            return jsonify({"error": "Authorization failed"}), 401
 
         # Use upsert to insert or update the record
         response = supabase.table("profiles").upsert({

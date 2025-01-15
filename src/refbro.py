@@ -432,6 +432,7 @@ def zotero_callback():
             return jsonify({"error": "Missing oauth_token or oauth_verifier"}), 400
 
         if not user_id:
+            current_app.logger.error(f"Missing user_id in request: {data}")
             return jsonify({"error": "User ID missing in request body"}), 400
 
         # Retrieve the secret for this token
@@ -447,7 +448,12 @@ def zotero_callback():
         # Log before saving to database
         current_app.logger.info(f"Saving to database: user_id={user_id}, access_token={access_token}")
 
-        response = save_to_database(user_id, access_token, access_secret)
+        try:
+            response = save_to_database(user_id, access_token, access_secret)
+        except Exception as e:
+            current_app.logger.error(f"Error in save_to_database: {e}")
+            return jsonify({"error": str(e)}), 500
+
 
         # Log the response from Supabase
         current_app.logger.info(f"Supabase response: {response}")
