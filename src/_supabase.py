@@ -19,16 +19,16 @@ def save_to_database(user_id, access_token, access_secret):
             "zotero_access_secret": access_secret,
         }).eq("id", user_id).execute()
 
-        # Check if there's an error in the response
-        if response.get("error"):
-            current_app.logger.error(f"Error updating database: {response['error']}")
-            raise Exception(f"Error updating database: {response['error']}")
+        # Check for errors in the response
+        if response.error:
+            current_app.logger.error(f"Error updating database: {response.error}")
+            raise Exception(f"Error updating database: {response.error}")
 
         # Log the successful response
-        current_app.logger.debug(f"Database update successful: {response.get('data')}")
+        current_app.logger.debug(f"Database update successful: {response.data}")
 
         # Return the data if no error occurred
-        return response.get("data")
+        return response.data
     except Exception as e:
         current_app.logger.error(f"Error saving to database: {e}")
         raise
