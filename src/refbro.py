@@ -405,6 +405,8 @@ def zotero_request_token():
 
         # Save the token and its secret in the global dictionary
         oauth_token_store[request_token] = request_token_secret
+        current_app.logger.debug(f"Stored token: {request_token} with secret: {request_token_secret}")
+
 
         # Generate the Zotero authorization URL
         authorization_url = get_authorization_url(request_token)
@@ -439,7 +441,9 @@ def zotero_callback():
 
         # Exchange the request token for an access token
         access_token, access_secret = get_access_token(oauth_token, oauth_verifier, oauth_token_secret)
+        current_app.logger.info(f"Generated token: {access_token}, secret: {access_secret}")
 
+        current_app.logger.info("Successfully retrieved Zotero access token and secret. Preparing to save.")
         # Log before saving to database
         current_app.logger.info(f"Saving to database: user_id={user_id}, access_token={access_token}")
 
