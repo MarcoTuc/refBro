@@ -59,8 +59,15 @@ def get_authorization_url(request_token):
     """Generates the Zotero authorization URL."""
     return f"{zotero_authorize_endpoint}?oauth_token={request_token}"
 
-def get_access_token(oauth_token, oauth_verifier):
-    oauth = OAuth1(client_key, client_secret, resource_owner_key=oauth_token, verifier=oauth_verifier)
+def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
+    """Exchanges the request token and verifier for an access token."""
+    oauth = OAuth1(
+        client_key,
+        client_secret,
+        resource_owner_key=oauth_token,
+        resource_owner_secret=oauth_token_secret,  # Include the token secret
+        verifier=oauth_verifier
+    )
 
     response = requests.post(access_token_endpoint, auth=oauth)
 

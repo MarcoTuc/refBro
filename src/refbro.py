@@ -45,6 +45,8 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 
 mail = Mail(app)
+oauth_token_store = {}
+
 
 # Google Sheets configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -399,7 +401,10 @@ def feedback():
 def zotero_request_token():
     try:
         # Get the request token from Zotero
-        request_token, _ = get_request_token()
+        request_token, request_token_secret = get_request_token()
+
+        # Save the token and its secret in the global dictionary
+        oauth_token_store[request_token] = request_token_secret
 
         # Generate the Zotero authorization URL
         authorization_url = get_authorization_url(request_token)
@@ -409,6 +414,7 @@ def zotero_request_token():
     except Exception as e:
         current_app.logger.error(f"Error in Zotero OAuth flow: {str(e)}")
         return jsonify({"error": "Failed to initiate Zotero OAuth"}), 500
+
 
 @app.route("/zotero-success", methods=["POST"])
 def zotero_callback():
@@ -426,8 +432,13 @@ def zotero_callback():
         if not user_id:
             return jsonify({"error": "User ID missing in request body"}), 400
 
+        # Retrieve the secret for this token
+        oauth_token_secret = oauth_token_store.pop(oauth_token, None)
+        if not oauth_token_secret:
+            return jsonify({"error": "Invalid or expired oauth_token"}), 400
+
         # Exchange the request token for an access token
-        access_token, access_secret = get_access_token(oauth_token, oauth_verifier)
+        access_token, access_secret = get_access_token(oauth_token, oauth_verifier, oauth_token_secret)
 
         # Log before saving to database
         current_app.logger.info(f"Saving to database: user_id={user_id}, access_token={access_token}")
