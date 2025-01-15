@@ -5,6 +5,7 @@ import hashlib
 import base64
 import urllib.parse
 from requests_oauthlib import OAuth1
+from flask import current_app
 
 
 # Our Zotero API keys
@@ -64,6 +65,7 @@ def get_access_token(oauth_token, oauth_verifier):
     response = requests.post(access_token_endpoint, auth=oauth)
 
     if response.status_code != 200:
+        current_app.logger.error(f"Failed to get access token from Zotero. Status: {response.status_code}, Response: {response.text}")
         raise Exception("Failed to get access token from Zotero")
 
     # Parse the access token and secret from the response
