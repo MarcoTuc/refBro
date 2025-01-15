@@ -2,16 +2,14 @@ from supabase import create_client
 from flask import current_app, request, jsonify
 
 SUPABASE_URL = "https://wyrflssqbzxklzeowjjn.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5cmZsc3NxYnp4a2x6ZW93ampuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNjg4MTM1NCwiZXhwIjoyMDUyNDU3MzU0fQ.roWju4AyZo3UdxW9Uofq0BXxy5sFJOT2VjlGxmLw_Sk"
 
 def get_supabase_client():
-    """Dynamically initialize Supabase client with user's JWT."""
-    auth_header = request.headers.get("Authorization")
-    current_app.logger.debug(f"Authorization header: {auth_header}")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise Exception("Missing or invalid Authorization header")
-    
-    jwt_token = auth_header.split("Bearer ")[1]  # Extract the JWT
-    return create_client(SUPABASE_URL, jwt_token)
+    """
+    Initialize Supabase client with the service role key.
+    This key bypasses RLS and is used for server-side operations.
+    """
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def save_to_database(user_id, access_token, access_secret):
     """
