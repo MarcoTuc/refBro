@@ -1,11 +1,17 @@
 from supabase import create_client
-from flask import current_app
+from flask import current_app, request
 
-# Supabase URL and Key
 SUPABASE_URL = "https://wyrflssqbzxklzeowjjn.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5cmZsc3NxYnp4a2x6ZW93ampuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY4ODEzNTQsImV4cCI6MjA1MjQ1NzM1NH0.ffQli-xxRUPFsNO8nk2wndpY-ShatAeCmAfD2uHRZcA"
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_supabase_client():
+    """Dynamically initialize Supabase client with user's JWT."""
+    auth_header = request.headers.get("Authorization")
+    current_app.logger.debug(f"Authorization header: {auth_header}")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise Exception("Missing or invalid Authorization header")
+    
+    jwt_token = auth_header.split("Bearer ")[1]  # Extract the JWT
+    return create_client(SUPABASE_URL, jwt_token)
 
 def save_to_database(user_id, access_token, access_secret):
     """
@@ -13,6 +19,9 @@ def save_to_database(user_id, access_token, access_secret):
     """
     try:
         current_app.logger.debug(f"Attempting to save to database: user_id={user_id}, access_token={access_token}, access_secret={access_secret}")
+        
+        # Initialize Supabase client with the user's JWT
+        supabase = get_supabase_client()
 
         # Use upsert to insert or update the record
         response = supabase.table("profiles").upsert({
