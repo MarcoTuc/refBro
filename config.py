@@ -1,22 +1,22 @@
-import os 
-import dotenv
+import os
+from dotenv import load_dotenv
 
-env_vars = dotenv.dotenv_values()
+# Load environment variables from .env file for local development
+load_dotenv()
 
 class Config:
     def __init__(self):
         self._config = {}
-        for key in env_vars:
-            value = os.environ.get(key) or "you-shall-not-pass"
-            setattr(self, key, value)
-            self._config[key] = value
+        # Load environment variables into the config
+        for key in os.environ:
+            self._config[key] = os.getenv(key, "you-shall-not-pass")
+            setattr(self, key, self._config[key])
             
     def __getitem__(self, key):
         return self._config[key]
-    
+
 config = Config()
 
 if __name__ == "__main__":
-    config = Config()
-    print(config.ZOTERO_KEY)
-    print(config["ZOTERO_KEY"])
+    print(config.ZOTERO_CLIENT_KEY)
+    print(config["ZOTERO_CLIENT_KEY"])
