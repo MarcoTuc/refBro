@@ -76,6 +76,8 @@ def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
         app.logger.error(f"Failed to get access token from Zotero. Status: {response.status_code}, Response: {response.text}")
         raise Exception("Failed to get access token from Zotero")
 
+    app.logger.info(f"Zotero response: {response.text}")
+
     # Parse the access token and secret from the response
     data = dict(item.split("=") for item in response.text.split("&"))
     access_token = data.get("oauth_token")
