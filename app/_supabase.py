@@ -10,7 +10,7 @@ def get_supabase_client():
     Initialize Supabase client with the service role key.
     This key bypasses RLS and is used for server-side operations.
     """
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 def save_to_database(user_id, access_token, access_secret):
     """
@@ -32,6 +32,8 @@ def save_to_database(user_id, access_token, access_secret):
             "zotero_access_token": access_token,
             "zotero_access_secret": access_secret,
         }, on_conflict=["id"]).execute()
+
+        current_app.logger.debug(f"Supabase request payload: {response}")
 
         # Check for errors in the response
         if response.get("error"):
