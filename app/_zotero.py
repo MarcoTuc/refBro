@@ -115,4 +115,48 @@ def get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_
     # Return the Zotero data (or modify it if necessary)
     return zotero_data
 
+def get_zotero_collections(zotero_access_token, zotero_access_secret, zotero_user_id):
+    """Fetches the Zotero collections for a given user."""
+
+    api_url = f"https://api.zotero.org/users/{zotero_user_id}/collections?key={zotero_access_secret}"
+
+    try: 
+        response = requests.get(api_url, headers={
+            "Authorization": f"Bearer {zotero_access_token}"  # Add the OAuth access token in the header
+        })
+    except Exception as e:
+        app.logger.error(f"Failed to retrieve Zotero collections. Status: {response.status_code}, Response: {response.text}")
+        raise Exception("Failed to retrieve Zotero collections.")
     
+    if response.status_code != 200:
+        app.logger.error(f"Failed to retrieve Zotero collections. Status: {response.status_code}, Response: {response.text}")
+        raise Exception("Failed to retrieve Zotero collections.")
+    
+    zotero_collections = response.json()
+    return zotero_collections
+
+def get_zotero_collection_items(collection_key, zotero_access_token, zotero_access_secret, zotero_user_id):
+    """Fetches the Zotero collection items for a given user."""
+    
+    api_url = f"https://api.zotero.org/users/{zotero_user_id}/collections/{collection_key}/items?key={zotero_access_secret}"
+
+    try: 
+        response = requests.get(api_url, headers={
+            "Authorization": f"Bearer {zotero_access_token}"  # Add the OAuth access token in the header
+        })
+    except Exception as e:
+        app.logger.error(f"Failed to retrieve Zotero collection items. Status: {response.status_code}, Response: {response.text}")
+        raise Exception("Failed to retrieve Zotero collection items.")
+    
+    if response.status_code != 200:
+        app.logger.error(f"Failed to retrieve Zotero collection items. Status: {response.status_code}, Response: {response.text}")
+        raise Exception("Failed to retrieve Zotero collection items.")
+    
+    zotero_collection_items = response.json()
+    return zotero_collection_items
+
+def parse_doi_from_zotero_item(item):
+    """Parses the DOI from a Zotero item."""
+    # Using the get method to safely access nested dictionaries and avoid KeyError
+    doi = item.get("data", {}).get("DOI")
+    return doi

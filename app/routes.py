@@ -1,15 +1,24 @@
 import os
 import traceback
 from datetime import datetime
+import requests
 
-from flask import jsonify, request, render_template
+from flask import jsonify, request, render_template, url_for
 from flask_mail import Message
 import jwt
 from app import app, mail
 from app.logging_utils import track_memory
 from app._topicmod import rank_results
 from app._openai import keywords_from_abstracts
-from app._zotero import get_request_token, get_authorization_url, get_access_token, get_zotero_library
+from app._zotero import (
+    get_request_token, 
+    get_authorization_url, 
+    get_access_token, 
+    get_zotero_library, 
+    get_zotero_collections,
+    get_zotero_collection_items,
+    parse_doi_from_zotero_item
+    )
 from app._supabase import supabase_test_insert, get_zotero_credentials
 from app._google import append_to_sheet, EMAILS_SPREADSHEET_ID, FEEDBACK_SPREADSHEET_ID
 from app._openalex import (
@@ -354,4 +363,41 @@ def zotero_library():
 
     return jsonify({"message": "Zotero data retrieved successfully", "zotero_data": zotero_data}), 200
     
+@app.route("/zotero/collections", methods=["POST"])
+def zotero_collections():
+    data = request.json
+    email = data.get('email')
+    zotero_access_token, zotero_access_secret, zotero_user_id = get_zotero_credentials(email)
+    zotero_collections = get_zotero_collections(zotero_access_token, zotero_access_secret, zotero_user_id)
+    return jsonify({"message": "Zotero collections retrieved successfully", "zotero_collections": zotero_collections}), 200
+
+@app.route("/zotero/collections/recommendations", methods=["POST"])
+def zotero_collection_recommendations():
+    data = request.json
+    collection_key = data.get('collection_key')
+    email = data.get('email')
     
+    # Retrieve Zotero credentials
+    zotero_access_token, zotero_access_secret, zotero_user_id = get_zotero_credentials(email)
+    
+    # Get collection items and extract DOIs
+    zotero_collection_items = get_zotero_collection_items(collection_key, zotero_access_token, zotero_access_secret, zotero_user_id)
+    dois = [parse_doi_from_zotero_item(item) for item in zotero_collection_items]
+    
+    # Prepare the payload for the colab endpoint
+    payload = {
+        "queries": dois,
+        "include_unranked": data.get("include_unranked", False)
+    }
+    
+    # Generate the relative URL for the /v1/colab endpoint
+    colab_url = url_for('colab', _external=True)
+    
+    # Make a POST request to the /v1/colab endpoint
+    try:
+        colab_response = requests.post(colab_url, json=payload)
+        colab_response.raise_for_status()  # Raise an error for bad responses
+        return jsonify(colab_response.json()), colab_response.status_code
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error calling /v1/colab: {str(e)}")
+        return jsonify({"error": "Failed to get recommendations from colab endpoint"}), 500
