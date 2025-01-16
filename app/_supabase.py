@@ -26,3 +26,18 @@ def supabase_test_insert(email, zotero_access_token, zotero_access_secret, zoter
         logger.error(f"Error in Supabase test: {str(e)}")
         raise e
     
+def get_zotero_credentials(email):
+    logger = app.logger
+    try: 
+        response = supabase.table('zotero') \
+            .select('zotero_access_token, zotero_access_secret, zotero_user_id') \
+            .eq('email', email) \
+            .execute()
+        logger.info(f"Supabase response: {response}")
+        zotero_access_token = response.data[0]['zotero_access_token']
+        zotero_access_secret = response.data[0]['zotero_access_secret']
+        zotero_user_id = response.data[0]['zotero_user_id']
+        return zotero_access_token, zotero_access_secret, zotero_user_id
+    except Exception as e:
+        logger.error(f"Error in get_zotero_credentials: {str(e)}")
+        raise e

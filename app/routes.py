@@ -9,8 +9,8 @@ from app import app, mail
 from app.logging_utils import track_memory
 from app._topicmod import rank_results
 from app._openai import keywords_from_abstracts
-from app._zotero import get_request_token, get_authorization_url, get_access_token
-from app._supabase import supabase_test_insert
+from app._zotero import get_request_token, get_authorization_url, get_access_token, get_zotero_library
+from app._supabase import supabase_test_insert, get_zotero_credentials
 from app._google import append_to_sheet, EMAILS_SPREADSHEET_ID, FEEDBACK_SPREADSHEET_ID
 from app._openalex import (
     multi_search,
@@ -343,6 +343,15 @@ def supabase_test():
         return jsonify({"error": str(e)}), 400
     
 
+@app.route("/zotero-data", methods=["POST"])
+def zotero_library():
+    app.logger.info(f"Request Headers: {request.headers}")
+    app.logger.info(f"Request Body: {request.data}")
+    data = request.json
+    email = data.get('email')
+    zotero_access_token, zotero_access_secret, zotero_user_id = get_zotero_credentials(email)
+    zotero_data = get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_user_id)
 
-        
+    return jsonify({"message": "Zotero data retrieved successfully", "zotero_data": zotero_data}), 200
+    
     

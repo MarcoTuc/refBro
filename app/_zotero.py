@@ -88,3 +88,31 @@ def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
         raise Exception("Invalid access token response from Zotero")
 
     return access_token, access_secret, zotero_user_id
+
+
+def get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_user_id):
+    """Fetches the Zotero library data for a given user."""
+    
+    # Zotero API URL to get the user's items
+    zotero_api_url = f"https://api.zotero.org/users/{zotero_user_id}/items?key={zotero_access_secret}"
+
+    # Make the API request to Zotero
+    response = requests.get(zotero_api_url, headers={
+        "Authorization": f"Bearer {zotero_access_token}"  # Add the OAuth access token in the header
+    })
+
+    if response.status_code != 200:
+        # If the response is not successful, log and raise an exception
+        app.logger.error(f"Failed to retrieve Zotero data. Status: {response.status_code}, Response: {response.text}")
+        raise Exception("Failed to retrieve Zotero library data.")
+
+    # Parse the JSON response from Zotero
+    zotero_data = response.json()
+
+    # Optionally, log or process the retrieved data
+    app.logger.info(f"Retrieved Zotero data for {email}: {zotero_data}")
+
+    # Return the Zotero data (or modify it if necessary)
+    return zotero_data
+
+    
