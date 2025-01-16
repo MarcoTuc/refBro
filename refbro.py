@@ -9,12 +9,12 @@ CORS(app, origins=[
     "https://oshimascience.com",
     "https://www.oshimascience.com"
 ], 
-allow_headers=["Content-Type"], 
-methods=["GET", "POST", "OPTIONS"],  # Make sure GET is here
+allow_headers=["Content-Type", "Authorization", "Refresh-Token"], 
+methods=["GET", "POST", "OPTIONS"],
 expose_headers=["Content-Type"],
 )
 
 
 if __name__ == '__main__':
-    port = int(app.config.get('PORT', 5001))  # Use PORT env var, default to 5000 for local dev
+    port = int(app.config.get('PORT', 5001))  # Use PORT env var, default to 5001 for local dev
     app.run(host="0.0.0.0", port=port, debug=True)
