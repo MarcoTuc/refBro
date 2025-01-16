@@ -4,13 +4,13 @@ from datetime import datetime
 
 from flask import jsonify, request, render_template
 from flask_mail import Message
-
+import jwt
 from app import app, mail
 from app.logging_utils import track_memory
 from app._topicmod import rank_results
 from app._openai import keywords_from_abstracts
 from app._zotero import get_request_token, get_authorization_url, get_access_token
-from app._supabase import save_to_database
+from app._supabase import supabase_test_insert
 from app._google import append_to_sheet, EMAILS_SPREADSHEET_ID, FEEDBACK_SPREADSHEET_ID
 from app._openalex import (
     multi_search,
@@ -284,15 +284,15 @@ def zotero_callback():
 
         oauth_token = data.get("oauthToken")
         oauth_verifier = data.get("oauthVerifier")
-        user_id = data.get("userId")
+        email = data.get("email")
         app.logger.info(f"oauth_token={oauth_token}, oauth_verifier={oauth_verifier}")
 
         if not oauth_token or not oauth_verifier:
             return jsonify({"error": "Missing oauth_token or oauth_verifier"}), 400
 
-        if not user_id:
-            app.logger.error(f"Missing user_id in request: {data}")
-            return jsonify({"error": "User ID missing in request body"}), 400
+        if not email:
+            app.logger.error(f"Missing email in request: {data}")
+            return jsonify({"error": "Email missing in request body"}), 400
 
         # Retrieve the secret for this token
         oauth_token_secret = oauth_token_store.pop(oauth_token, None)
@@ -300,24 +300,49 @@ def zotero_callback():
             return jsonify({"error": "Invalid or expired oauth_token"}), 400
 
         # Exchange the request token for an access token
-        access_token, access_secret = get_access_token(oauth_token, oauth_verifier, oauth_token_secret)
+        access_token, access_secret, zotero_user_id = get_access_token(oauth_token, oauth_verifier, oauth_token_secret)
         app.logger.info(f"Generated token: {access_token}, secret: {access_secret}")
 
         app.logger.info("Successfully retrieved Zotero access token and secret. Preparing to save.")
         # Log before saving to database
-        app.logger.info(f"Saving to database: user_id={user_id}, access_token={access_token}")
+        app.logger.info(f"Saving to database: email={email}, access_token={access_token}, user_id={zotero_user_id}")
 
         try:
-            response = save_to_database(user_id, access_token, access_secret)
+            supabase_test_insert(email, access_token, access_secret, zotero_user_id)
         except Exception as e:
-            app.logger.error(f"Error in save_to_database: {e}")
+            app.logger.error(f"Error in supabase_test_insert: {e}")
             return jsonify({"error": str(e)}), 500
-
-
-        # Log the response from Supabase
-        app.logger.info(f"Supabase response: {response}")
 
         return jsonify({"message": "Zotero account successfully connected!"}), 200
     except Exception as e:
         app.logger.error(f"Error during Zotero callback: {str(e)}")
         return jsonify({"error": "Failed to connect Zotero"}), 500
+    
+
+@app.route("/supabase-test", methods=["POST"])
+def supabase_test():
+    app.logger.info(f"Request Headers: {request.headers}")
+    app.logger.info(f"Request Body: {request.data}")
+
+    data = request.json
+    email = data.get('email')
+    zotero_access_token = data.get('zotero_access_token')
+    zotero_access_secret = data.get('zotero_access_secret')
+    zotero_user_id = data.get('zotero_user_id')
+
+    if not email or not zotero_access_token or not zotero_access_secret:
+        app.logger.error("Missing email or zotero_access_token or zotero_access_secret in request body")
+        return jsonify({"error": "Missing email or zotero_access_token or zotero_access_secret"}), 400
+
+    try: 
+        app.logger.info(f"calling supabase_test_insert")
+        supabase_test_insert(email, zotero_access_token, zotero_access_secret, zotero_user_id)
+        return jsonify({"message": "Supabase test insert successful"}), 200
+    except Exception as e:
+        app.logger.error(f"Error in Supabase test: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+    
+
+
+        
+    
