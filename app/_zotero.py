@@ -82,7 +82,7 @@ def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
     data = dict(item.split("=") for item in response.text.split("&"))
     access_token = data.get("oauth_token")
     access_secret = data.get("oauth_token_secret")
-    zotero_user_id = data.get("user_id")
+    zotero_user_id = data.get("userID")
 
     if not access_token or not access_secret:
         raise Exception("Invalid access token response from Zotero")
