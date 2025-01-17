@@ -374,29 +374,41 @@ def zotero_collections():
 @app.route("/zotero/collections/recommendations", methods=["POST"])
 def zotero_collection_recommendations():
     data = request.json
-    collection_key = data.get('collection_key')
+    collection_keys = data.get('collection_keys')  # Now expecting an array
     email = data.get('email')
+    
+    if not collection_keys or not isinstance(collection_keys, list):
+        return jsonify({"error": "collection_keys must be a non-empty array"}), 400
     
     # Retrieve Zotero credentials
     zotero_access_token, zotero_access_secret, zotero_user_id = get_zotero_credentials(email)
     
-    # Get collection items and extract DOIs
-    zotero_collection_items = get_zotero_collection_items(collection_key, zotero_access_token, zotero_access_secret, zotero_user_id)
-    dois = [parse_doi_from_zotero_item(item) for item in zotero_collection_items]
+    # Collect DOIs from all collections
+    all_dois = []
+    for collection_key in collection_keys:
+        collection_items = get_zotero_collection_items(
+            collection_key, 
+            zotero_access_token, 
+            zotero_access_secret, 
+            zotero_user_id
+        )
+        collection_dois = [parse_doi_from_zotero_item(item) for item in collection_items]
+        all_dois.extend(collection_dois)
+    
+    # Remove duplicates while preserving order
+    unique_dois = list(dict.fromkeys(all_dois))
     
     # Prepare the payload for the colab endpoint
     payload = {
-        "queries": dois,
+        "queries": unique_dois,
         "include_unranked": data.get("include_unranked", False)
     }
     
-    # Generate the relative URL for the /v1/colab endpoint
-    colab_url = url_for('colab', _external=True)
-    
     # Make a POST request to the /v1/colab endpoint
     try:
+        colab_url = url_for('colab', _external=True)
         colab_response = requests.post(colab_url, json=payload)
-        colab_response.raise_for_status()  # Raise an error for bad responses
+        colab_response.raise_for_status()
         return jsonify(colab_response.json()), colab_response.status_code
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error calling /v1/colab: {str(e)}")

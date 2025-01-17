@@ -91,7 +91,7 @@ def get_access_token(oauth_token, oauth_verifier, oauth_token_secret):
 
 
 def get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_user_id):
-    """Fetches the Zotero library data for a given user."""
+    """Fetches the entire Zotero library data for a given user, meaning all items."""
     
     # Zotero API URL to get the user's items
     zotero_api_url = f"https://api.zotero.org/users/{zotero_user_id}/items?key={zotero_access_secret}"
@@ -118,7 +118,7 @@ def get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_
 def get_zotero_collections(zotero_access_token, zotero_access_secret, zotero_user_id):
     """Fetches the Zotero collections for a given user."""
 
-    api_url = f"https://api.zotero.org/users/{zotero_user_id}/collections?key={zotero_access_secret}"
+    api_url = f"https://api.zotero.org/users/{zotero_user_id}/collections?limit=200?key={zotero_access_secret}"
 
     try: 
         response = requests.get(api_url, headers={
@@ -133,7 +133,8 @@ def get_zotero_collections(zotero_access_token, zotero_access_secret, zotero_use
         raise Exception("Failed to retrieve Zotero collections.")
     
     zotero_collections = response.json()
-    return zotero_collections
+    response = format_zotero_collections(zotero_collections)
+    return response
 
 def get_zotero_collection_items(collection_key, zotero_access_token, zotero_access_secret, zotero_user_id):
     """Fetches the Zotero collection items for a given user."""
@@ -160,3 +161,62 @@ def parse_doi_from_zotero_item(item):
     # Using the get method to safely access nested dictionaries and avoid KeyError
     doi = item.get("data", {}).get("DOI")
     return doi
+
+def format_zotero_collections(collections):
+    """Formats Zotero collections into a nested tree structure.
+    
+    Args:
+        collections (list): Raw Zotero collections response
+        
+    Returns:
+        list: List of top-level collections with nested children
+    """
+    # First, create a mapping of collection key to formatted collection
+    collection_map = {}
+    
+    # Initialize formatted collections
+    for collection in collections:
+        collection_map[collection['key']] = {
+            'key': collection['key'],
+            'name': collection['data']['name'],  # Including name for easier debugging
+            'numCollections': collection['meta'].get('numCollections', 0),
+            'numItems': collection['meta'].get('numItems', 0),
+            'link': f"/collections/{collection['key']}",  # Adjust link format as needed
+            'children': []
+        }
+
+    # Build the tree structure
+    root_collections = []
+    for collection in collections:
+        formatted_collection = collection_map[collection['key']]
+        
+        # If collection has a parent, add it as a child
+        if 'parentCollection' in collection['data'] and collection['data']['parentCollection']:
+            parent_key = collection['data']['parentCollection']
+            if parent_key in collection_map:
+                collection_map[parent_key]['children'].append(formatted_collection)
+        else:
+            # If no parent, it's a root collection
+            root_collections.append(formatted_collection)
+
+    # Recursively calculate total items and sort children
+    def calculate_total_items_and_sort(collection):
+        total = collection['numItems']
+        for child in collection['children']:
+            total += calculate_total_items_and_sort(child)
+        collection['numItems'] = total
+        
+        # Only move 0-item collections to bottom, preserve original order otherwise
+        collection['children'].sort(key=lambda x: x['numItems'] == 0)
+        return total
+
+    # Calculate totals and sort root collections
+    for collection in root_collections:
+        calculate_total_items_and_sort(collection)
+    
+    # Only move 0-item collections to bottom for root collections
+    root_collections.sort(key=lambda x: x['numItems'] == 0)
+
+    return root_collections
+
+    
