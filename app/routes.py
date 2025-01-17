@@ -413,3 +413,33 @@ def zotero_collection_recommendations():
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error calling /v1/colab: {str(e)}")
         return jsonify({"error": "Failed to get recommendations from colab endpoint"}), 500
+    
+@app.route("/v1/profile", methods=["POST", "OPTIONS"])
+def profile():
+    logger = app.logger
+    
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    
+    logger.info("Starting profile endpoint processing")
+    
+    # Log request data
+    logger.info(f"Request headers: {dict(request.headers)}")
+    logger.info(f"Request body: {request.get_json()}")
+    
+    try:
+        data = request.json
+        email = data.get('email')
+        logger.info(f"Attempting to get Zotero credentials for email: {email}")
+        
+        zotero_access_token, zotero_access_secret, zotero_user_id = get_zotero_credentials(email)
+        logger.info("Successfully retrieved Zotero credentials")
+        
+        logger.info("Attempting to get Zotero library")
+        zotero_data = get_zotero_library(email, zotero_access_token, zotero_access_secret, zotero_user_id)
+        logger.info("Successfully retrieved Zotero library")
+        
+        return jsonify({"message": "Zotero data retrieved successfully", "zotero_data": zotero_data}), 200
+    except Exception as e:
+        logger.error(f"Error in profile endpoint: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
