@@ -60,7 +60,7 @@ async def get_recommendations():
         
         unranked_dois = search['doi'].tolist() if include_unranked else None
 
-        recomm = rank_results(search, top_k=20, exclude_dois=dois)
+        recomm = rank_results(search, top_k=100, exclude_dois=dois)
         
         app.logger.info("extracting abstract")
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
@@ -127,7 +127,7 @@ async def colab():
         unranked_dois = search['doi'].tolist() if include_unranked else None
         
         # Use existing ranking method
-        recomm = rank_results(search, top_k=20, exclude_dois=dois)
+        recomm = rank_results(search, top_k=100, exclude_dois=dois)
         recomm["abstract"] = recomm["abstract_inverted_index"].apply(reconstruct_abstract)
         
         try:
