@@ -2,9 +2,13 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file for local development
-load_dotenv()
+load_dotenv(".env")
 
 class Config:
+
+    # TEST_VAR = "TEST_VAR"
+    # You can manually add variables here that don't have to be in .env
+
     def __init__(self):
         self._config = {}
         # Load environment variables into the config
@@ -17,6 +21,6 @@ class Config:
 
 config = Config()
 
-if __name__ == "__main__":
-    print(config.ZOTERO_CLIENT_KEY)
-    print(config["ZOTERO_CLIENT_KEY"])
+# if __name__ == "__main__":
+#     print(config.ZOTERO_CLIENT_KEY)
+#     print(config["ZOTERO_CLIENT_KEY"])
