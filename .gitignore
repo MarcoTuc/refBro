@@ -3,6 +3,7 @@ env
 vector_data
 config.yml
 .exp
+.trash
 .env
 data
 google-credentials.json
