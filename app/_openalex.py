@@ -8,24 +8,8 @@ BASE_OPENALEX = "https://api.openalex.org"
 OPENALEX_EMAIL = app.config["OPENALEX_EMAIL"]
 
 # FIELDS TO FETCH FROM OPENALEX
-doi_minimal_fields = ",".join(
-        [
-            "cited_by_api_url",
-            "referenced_works"
-        ]
-    )
-
-paper_fields = ",".join(
-        [
-            "title",
-            "abstract_inverted_index",
-            "doi",
-            "authorships",
-            "publication_year",
-            "primary_location",
-            "topics"
-        ]
-    )
+doi_minimal_fields = app.config["OPENALEX_DOI_MINIMAL_FIELDS"]
+paper_fields = app.config["OPENALEX_PAPER_FIELDS"]
 
 async def fetch_with_retry(session, url: str, max_retries: int = 6, initial_delay: float = 1.0) -> Optional[dict]:
     logger = app.logger
@@ -298,20 +282,34 @@ async def fetch_all_citation_networks(dois: list[str], total_max_papers: int = 2
         app.logger.error(f"Error in fetch_all_citation_networks: {str(e)}")
         raise
 
-def reconstruct_abstract(index: dict) -> str:
-    """Reconstruct abstract from inverted index"""
-    if isinstance(index, type(None)):
+def reconstruct_abstract(inverted_index):
+    if not inverted_index:
         return "MISSING_ABSTRACT"
     
-    max_position_sum = sum([len(position)+1 for position in index.values()]) + 500 # + 500 for safety 
-    abstract_array = max_position_sum*[None]
-    for word, positions in index.items():
-        for position in positions:
-            abstract_array[position] = word
-    abstract_array = [i for i in abstract_array if i is not None]
-    abstract_string = ' '.join(abstract_array)
-    abstract_string = abstract_string.replace(r'^abstract\s+', '')
-    return abstract_string
+    # Create a list of tuples (position, word)
+    word_positions = []
+    for word, positions in inverted_index.items():
+        for pos in positions:
+            word_positions.append((pos, word))
+    
+    # Sort by position and join words
+    return ' '.join(word for _, word in sorted(word_positions))
+
+# OLD SHITTY VERSION
+# def reconstruct_abstract(index: dict) -> str:
+#     """Reconstruct abstract from inverted index"""
+#     if isinstance(index, type(None)):
+#         return "MISSING_ABSTRACT"
+    
+#     max_position_sum = sum([len(position)+1 for position in index.values()]) + 500 # + 500 for safety 
+#     abstract_array = max_position_sum*[None]
+#     for word, positions in index.items():
+#         for position in positions:
+#             abstract_array[position] = word
+#     abstract_array = [i for i in abstract_array if i is not None]
+#     abstract_string = ' '.join(abstract_array)
+#     abstract_string = abstract_string.replace(r'^abstract\s+', '')
+#     return abstract_string
 
 async def get_papers_from_dois(dois: list[str]) -> pd.DataFrame:
     """Get paper metadata for a list of DOIs"""

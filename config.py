@@ -4,23 +4,31 @@ from dotenv import load_dotenv
 # Load environment variables from .env file for local development
 load_dotenv(".env")
 
-class Config:
-
-    # TEST_VAR = "TEST_VAR"
-    # You can manually add variables here that don't have to be in .env
+class Config:    
+    # Torch device
+    DEVICE = "cuda:0"
+    # Scientific Citation Network Embedding Model huggingface path
+    SCI_EMB_MODEL = "sentence-transformers/allenai-specter"
+    # OpenAlex fields to keep
+    OPENALEX_PAPER_FIELDS = ",".join(
+        [
+            "title",
+            "abstract_inverted_index",
+            "doi",
+            "authorships",
+            "publication_year",
+            "primary_location",
+            "topics"
+        ]
+    )
+    OPENALEX_DOI_MINIMAL_FIELDS = ",".join(
+        [
+            "cited_by_api_url",
+            "referenced_works"
+        ]
+    )
 
     def __init__(self):
-        self._config = {}
-        # Load environment variables into the config
         for key in os.environ:
-            self._config[key] = os.getenv(key, "you-shall-not-pass")
-            setattr(self, key, self._config[key])
-            
-    def __getitem__(self, key):
-        return self._config[key]
+            setattr(self, key, os.getenv(key, "you-shall-not-pass"))
 
-config = Config()
-
-# if __name__ == "__main__":
-#     print(config.ZOTERO_CLIENT_KEY)
-#     print(config["ZOTERO_CLIENT_KEY"])
