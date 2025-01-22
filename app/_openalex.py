@@ -293,7 +293,9 @@ def reconstruct_abstract(inverted_index):
             word_positions.append((pos, word))
     
     # Sort by position and join words
-    return ' '.join(word for _, word in sorted(word_positions))
+    abstract_string = ' '.join(word for _, word in sorted(word_positions))
+    abstract_string = abstract_string.replace(r'^abstract\s+', '')
+    return abstract_string
 
 # OLD SHITTY VERSION
 # def reconstruct_abstract(index: dict) -> str:
