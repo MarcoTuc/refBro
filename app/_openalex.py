@@ -380,3 +380,26 @@ def format_journal(primary_location):
         return "Unknown Journal"
         
     return source.get('display_name', 'Unknown Journal')
+
+def format_recommendations(recommendations: pd.DataFrame):
+    recommendations = recommendations[[
+                "title", "abstract", "doi", "authorships",
+                "publication_year", "primary_location", "score",
+            ]].to_dict("records")
+    formatted_recommendations = []
+    for paper in recommendations:
+        try:
+            formatted_paper = {
+                'title': paper['title'],
+                'abstract': paper['abstract'],
+                'doi': paper['doi'],
+                'authors': format_authors(paper['authorships']),
+                'journal': format_journal(paper['primary_location']),
+                'year': paper['publication_year'],
+                'score': paper['score']
+            }
+            formatted_recommendations.append(formatted_paper)
+        except Exception as e:
+            app.logger.error(f"Error formatting paper: {str(e)}")
+            continue
+    return formatted_recommendations

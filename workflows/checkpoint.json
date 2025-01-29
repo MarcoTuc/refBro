@@ -1,0 +1,32 @@
+{
+  "pickle_files": [
+    "data/publishers/nature_scraped/slice_01.pkl",
+    "data/publishers/nature_scraped/slice_02.pkl",
+    "data/publishers/nature_scraped/slice_03.pkl",
+    "data/publishers/nature_scraped/slice_04.pkl",
+    "data/publishers/nature_scraped/slice_05.pkl",
+    "data/publishers/nature_scraped/slice_06.pkl",
+    "data/publishers/nature_scraped/slice_07.pkl",
+    "data/publishers/nature_scraped/slice_08.pkl",
+    "data/publishers/nature_scraped/slice_09.pkl",
+    "data/publishers/nature_scraped/slice_10.pkl",
+    "data/publishers/nature_scraped/slice_11.pkl",
+    "data/publishers/nature_scraped/slice_12.pkl",
+    "data/publishers/nature_scraped/slice_13.pkl",
+    "data/publishers/nature_scraped/slice_14.pkl",
+    "data/publishers/nature_scraped/slice_15.pkl",
+    "data/publishers/nature_scraped/slice_16.pkl",
+    "data/publishers/nature_scraped/slice_17.pkl",
+    "data/publishers/nature_scraped/slice_18.pkl",
+    "data/publishers/nature_scraped/slice_19.pkl",
+    "data/publishers/nature_scraped/slice_20.pkl",
+    "data/publishers/nature_scraped/slice_21.pkl",
+    "data/publishers/nature_scraped/slice_22.pkl",
+    "data/publishers/nature_scraped/slice_23.pkl",
+    "data/publishers/nature_scraped/slice_24.pkl",
+    "data/publishers/nature_scraped/slice_25.pkl",
+    "data/publishers/nature_scraped/slice_26.pkl"
+  ],
+  "upload_batch_size": 800,
+  "being_processes": "data/publishers/nature_scraped/slice_28.pkl"
+}

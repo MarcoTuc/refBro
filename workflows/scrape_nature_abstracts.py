@@ -12,13 +12,21 @@ nest_asyncio.apply()
 
 
 original_dir = "/home/marco/Desktop/Coding/Oshima/refBro-main/data/publishers/Nature_Portfolio"
+original_files = glob.glob(f"{original_dir}/*.pkl")
+original_filenames = [os.path.basename(file) for file in original_files]
+
 save_dir = "/home/marco/Desktop/Coding/Oshima/refBro-main/data/publishers/nature_scraped"
 os.makedirs(save_dir, exist_ok=True)
-files = glob.glob(f"{original_dir}/*.pkl")
-files.remove("/home/marco/Desktop/Coding/Oshima/refBro-main/data/publishers/Nature_Portfolio/slice_1.pkl") #already processed
+existing_files = glob.glob(f"{save_dir}/*.pkl")
+existing_filenames = [os.path.basename(file) for file in existing_files]
+
+# remove already processed files
+for file in existing_filenames:
+    remove_path = os.path.join(original_dir, file)
+    original_files.remove(str(remove_path))
 
 async def process_files():
-    bar = tqdm(files, position=0)
+    bar = tqdm(original_files, position=0)
     for path in bar: 
         # Read the pickle file and append DOIs to urls list
         temp_df = pd.read_pickle(path)
